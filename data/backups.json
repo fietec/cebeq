@@ -1,0 +1,17 @@
+{
+    "branches":[
+        {
+            "id": 132,
+            "path": "",
+            "backups":[
+                {
+                    "time": 0,
+                    "dirs":[
+                        "d:/cdemeer/geoguessr"
+                    ]
+                }
+            ]
+        }
+    ],
+    "version": "0.0.1"
+}

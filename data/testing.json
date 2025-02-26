@@ -1,0 +1,274 @@
+{
+  "company": {
+    "name": "Tech Innovations Ltd.",
+    "founded": 2005,
+    "location": {
+      "address": "123 Innovation Drive",
+      "city": "Tech City",
+      "state": "Technology State",
+      "zip": "12345",
+      "country": "Innovia"
+    },
+    "employees": [
+      {
+        "id": 1,
+        "name": "John Doe",
+        "position": "CEO",
+        "department": "Executive",
+        "hire_date": "2005-03-15",
+        "salary": 250000,
+        "active": true,
+        "skills": ["Leadership", "Strategy", "Innovation"],
+        "projects": [
+          {
+            "project_id": 101,
+            "name": "Global Expansion",
+            "status": "Completed",
+            "budget": 5000000,
+            "team_members": [
+              {"employee_id": 2, "name": "Jane Smith", "role": "Project Manager"},
+              {"employee_id": 3, "name": "Michael Brown", "role": "Research Analyst"}
+            ],
+            "timeline": {
+              "start_date": "2020-01-01",
+              "end_date": "2022-06-30",
+              "milestones": [
+                {"milestone": "Market Research", "due_date": "2020-06-01", "completed": true},
+                {"milestone": "Expansion Plan", "due_date": "2021-02-01", "completed": true},
+                {"milestone": "Global Launch", "due_date": "2022-06-01", "completed": true}
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Jane Smith",
+        "position": "Project Manager",
+        "department": "Operations",
+        "hire_date": "2015-07-20",
+        "salary": 120000,
+        "active": true,
+        "skills": ["Project Management", "Budgeting", "Team Coordination"],
+        "projects": [
+          {
+            "project_id": 101,
+            "name": "Global Expansion",
+            "status": "Completed",
+            "budget": 5000000,
+            "team_members": [
+              {"employee_id": 1, "name": "John Doe", "role": "CEO"},
+              {"employee_id": 3, "name": "Michael Brown", "role": "Research Analyst"}
+            ],
+            "timeline": {
+              "start_date": "2020-01-01",
+              "end_date": "2022-06-30",
+              "milestones": [
+                {"milestone": "Market Research", "due_date": "2020-06-01", "completed": true},
+                {"milestone": "Expansion Plan", "due_date": "2021-02-01", "completed": true},
+                {"milestone": "Global Launch", "due_date": "2022-06-01", "completed": true}
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Michael Brown",
+        "position": "Research Analyst",
+        "department": "R&D",
+        "hire_date": "2018-09-10",
+        "salary": 90000,
+        "active": true,
+        "skills": ["Data Analysis", "Research", "Machine Learning"],
+        "projects": [
+          {
+            "project_id": 102,
+            "name": "AI Research",
+            "status": "Ongoing",
+            "budget": 2000000,
+            "team_members": [
+              {"employee_id": 4, "name": "Sarah Wilson", "role": "Data Scientist"},
+              {"employee_id": 5, "name": "David Lee", "role": "Developer"}
+            ],
+            "timeline": {
+              "start_date": "2023-05-01",
+              "end_date": "2025-05-01",
+              "milestones": [
+                {"milestone": "Data Collection", "due_date": "2023-08-01", "completed": false},
+                {"milestone": "Model Development", "due_date": "2024-04-01", "completed": false},
+                {"milestone": "Testing & Deployment", "due_date": "2025-04-01", "completed": false}
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "departments": [
+      {
+        "name": "Executive",
+        "budget": 1000000,
+        "employees": [
+          {"employee_id": 1, "name": "John Doe", "role": "CEO"}
+        ]
+      },
+      {
+        "name": "Operations",
+        "budget": 500000,
+        "employees": [
+          {"employee_id": 2, "name": "Jane Smith", "role": "Project Manager"}
+        ]
+      },
+      {
+        "name": "R&D",
+        "budget": 300000,
+        "employees": [
+          {"employee_id": 3, "name": "Michael Brown", "role": "Research Analyst"}
+        ]
+      }
+    ],
+    "clients": [
+      {
+        "id": 1001,
+        "name": "Global Tech Co.",
+        "industry": "Technology",
+        "contact": {
+          "name": "Alice Green",
+          "email": "alice.green@globaltech.com",
+          "phone": "+1234567890"
+        },
+        "projects": [
+          {
+            "project_id": 201,
+            "name": "Tech Integration",
+            "status": "Ongoing",
+            "budget": 2000000,
+            "start_date": "2024-01-15",
+            "end_date": "2026-01-15",
+            "assigned_team": [
+              {"employee_id": 1, "name": "John Doe", "role": "CEO"},
+              {"employee_id": 2, "name": "Jane Smith", "role": "Project Manager"}
+            ]
+          }
+        ]
+      },
+      {
+        "id": 1002,
+        "name": "Innovative Solutions",
+        "industry": "Consulting",
+        "contact": {
+          "name": "Robert Black",
+          "email": "robert.black@innosolutions.com",
+          "phone": "+9876543210"
+        },
+        "projects": [
+          {
+            "project_id": 202,
+            "name": "Consulting for Efficiency",
+            "status": "Planned",
+            "budget": 1500000,
+            "start_date": "2025-06-01",
+            "end_date": "2027-06-01",
+            "assigned_team": [
+              {"employee_id": 1, "name": "John Doe", "role": "CEO"},
+              {"employee_id": 3, "name": "Michael Brown", "role": "Research Analyst"}
+            ]
+          }
+        ]
+      }
+    ],
+    "financials": {
+      "total_revenue": 10000000,
+      "total_expenses": 6500000,
+      "net_profit": 3500000,
+      "assets": {
+        "cash": 1000000,
+        "equipment": 500000,
+        "property": 3000000
+      },
+      "liabilities": {
+        "loans": 1000000,
+        "payables": 500000
+      }
+    },
+    "products": [
+      {
+        "product_id": 301,
+        "name": "SmartAI Software",
+        "type": "Software",
+        "version": "1.5",
+        "price": 500,
+        "available": true,
+        "features": [
+          "AI Integration",
+          "Data Analytics",
+          "Customizable Dashboards"
+        ],
+        "reviews": [
+          {
+            "review_id": 501,
+            "rating": 4.5,
+            "reviewer": "James Carter",
+            "comments": "Great software, really enhanced our data analysis!"
+          },
+          {
+            "review_id": 502,
+            "rating": 4.0,
+            "reviewer": "Sophia Lee",
+            "comments": "Good tool, but could use more customization options."
+          }
+        ]
+      },
+      {
+        "product_id": 302,
+        "name": "TechPro Gadget",
+        "type": "Hardware",
+        "version": "2.1",
+        "price": 1200,
+        "available": false,
+        "features": [
+          "Smart Integration",
+          "Wireless Charging",
+          "Compact Design"
+        ],
+        "reviews": [
+          {
+            "review_id": 503,
+            "rating": 4.8,
+            "reviewer": "Michael Yang",
+            "comments": "Excellent gadget! Truly ahead of its time."
+          }
+        ]
+      }
+    ],
+    "partners": [
+      {
+        "partner_id": 401,
+        "name": "Future Tech Solutions",
+        "type": "Technology Partner",
+        "collaboration_since": "2017-04-12",
+        "contact": {
+          "name": "Linda Torres",
+          "email": "linda.torres@futuretech.com",
+          "phone": "+5559876543"
+        }
+      },
+      {
+        "partner_id": 402,
+        "name": "Creative Minds Agency",
+        "type": "Marketing Partner",
+        "collaboration_since": "2019-11-03",
+        "contact": {
+          "name": "John Gray",
+          "email": "john.gray@creativeminds.com",
+          "phone": "+5551234567"
+        }
+      }
+    ],
+    "social_media": {
+      "facebook": "https://facebook.com/TechInnovationsLtd",
+      "twitter": "https://twitter.com/TechInnovationsLtd",
+      "linkedin": "https://linkedin.com/company/TechInnovationsLtd"
+    }
+  }
+}
