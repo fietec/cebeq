@@ -209,24 +209,26 @@ fsize_t flib_dir_size_rec(DIR *dir, const char *dir_path)
     while ((d_entry = readdir(dir)) != NULL){
         (void)cwk_path_join(dir_path, d_entry->d_name, path, sizeof(path));
         switch (d_entry->d_type){
-            case DT_REG:{
+            case DT_REG: {
                 struct stat attr;
                 if (stat(path, &attr) == -1){
-                    eprintfn("Could not access '%s': %s!", path, strerror(errno));
+                    eprintfn("Could not access file '%s': %s!", path, strerror(errno));
                     continue;
                 }
                 size += attr.st_size;
             } break;
-            case DT_DIR:{
+            case DT_DIR: {
                 DIR *sub_dir = opendir(path);
                 if (sub_dir == NULL){
-                    eprintfn("Could not open sub-dir '%s': %s!", path, strerror(errno));
+                    eprintfn("Could not find dir '%s': %s!", path, strerror(errno));
                     continue;
                 }
                 size += flib_dir_size_rec(sub_dir, path);
+                closedir(sub_dir);
             } break;
         }
     }
+    return size;
 }
 
 void flib_print_entry(flib_entry entry)

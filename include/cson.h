@@ -43,8 +43,9 @@
 #define cson_ansi_rgb(r, g, b) ("\e[38;2;" #r ";" #g ";" #b "m")
 #define CSON_ANSI_END "\e[0m"
 
+#define cson_drop_first(arg, ...) __VA_ARGS__
 #define cson_args_len(...) sizeof((typeof(__VA_ARGS__)[]){__VA_ARGS__})/sizeof(typeof(__VA_ARGS__))
-#define cson_args_array(...) (typeof(__VA_ARGS__)[]){__VA_ARGS__}, cson_args_len(__VA_ARGS__)
+#define cson_args_array(...) (typeof(__VA_ARGS__)[]){cson_drop_first(__VA_ARGS__)}, cson_args_len(__VA_ARGS__)-1
 
 #define cson_info(msg, ...) (printf("%s%s:%d: " msg CSON_ANSI_END "\n", cson_ansi_rgb(196, 196, 196), __FILE__, __LINE__, ## __VA_ARGS__))
 #define cson_warning(msg, ...) (fprintf(stderr, "%s%s:%d: [WARNING] " msg CSON_ANSI_END "\n", cson_ansi_rgb(196, 64, 0), __FILE__, __LINE__, ## __VA_ARGS__))
@@ -169,7 +170,7 @@ struct CsonArg{
 
 struct Cson{
     union{
-        int integer;
+        int64_t integer;
         double floating;
         bool boolean;
         CsonStr string;
@@ -192,14 +193,25 @@ struct CsonRegion{
     uintptr_t data[];
 };
 
+static CsonArena cson_default_arena = {0};
+static CsonArena *cson_current_arena = &cson_default_arena;
+
 #define key(kstr) ((CsonArg) {.value.key=cson_str(kstr), .type=CsonArg_Key})
 #define index(istr) ((CsonArg) {.value.index=(size_t)(istr), .type=CsonArg_Index})
-#define cson_get(cson, ...) cson__get(cson, cson_args_array(__VA_ARGS__))
+
+// macros for multi-level searching
+#define cson_get(cson, ...) cson__get(cson, cson_args_array((CsonArg){0}, ##__VA_ARGS__))
+#define cson_get_int(cson, ...) cson__get_int(cson_get(cson, ##__VA_ARGS__))
+#define cson_get_float(cson, ...) cson__get_float(cson_get(cson, ##__VA_ARGS__))
+#define cson_get_bool(cson, ...) cson__get_bool(cson_get(cson, ##__VA_ARGS__))
+#define cson_get_string(cson, ...) cson__get_string(cson_get(cson, ##__VA_ARGS__))
+#define cson_get_array(cson, ...) cson__get_array(cson_get(cson, ##__VA_ARGS__))
+#define cson_get_map(cson, ...) cson__get_map(cson_get(cson, ##__VA_ARGS__))
 
 Cson* cson__get(Cson *cson, CsonArg args[], size_t count);
 
 Cson* cson_new(void);
-Cson* cson_new_int(int value);
+Cson* cson_new_int(int32_t value);
 Cson* cson_new_float(double value);
 Cson* cson_new_bool(bool value);
 Cson* cson_new_string(CsonStr value);
@@ -210,12 +222,12 @@ Cson* cson_new_map(CsonMap *value);
 size_t cson_len(Cson *cson);
 size_t cson_memsize(Cson *cson);
 
-int cson_get_int(Cson *cson);
-double cson_get_float(Cson *cson);
-bool cson_get_bool(Cson *cson);
-CsonStr cson_get_string(Cson *cson);
-CsonArray* cson_get_array(Cson *cson);
-CsonMap* cson_get_map(Cson *cson);
+int64_t cson__get_int(Cson *cson);
+double cson__get_float(Cson *cson);
+bool cson__get_bool(Cson *cson);
+CsonStr cson__get_string(Cson *cson);
+CsonArray* cson__get_array(Cson *cson);
+CsonMap* cson__get_map(Cson *cson);
 
 bool cson_is_int(Cson *cson);
 bool cson_is_float(Cson *cson);
@@ -251,6 +263,7 @@ uint32_t cson_str_hash(CsonStr str);
 bool cson_str_equals(CsonStr a, CsonStr b);
 size_t cson_str_memsize(CsonStr str);
 
+#ifdef CSON_WRITE
 #define CSON_PRINT_INDENT 4
 #define cson_print(cson) do{if (cson!=NULL){cson_fprint(cson, stdout, 0); putchar('\n');}else{printf("-null-\n");}} while (0)
 #define cson_array_print(array) do{if (array!=NULL){cson_array_fprint(array, stdout, 0); putchar('\n');}else{printf("-null-\n");}}while(0)
@@ -259,6 +272,9 @@ bool cson_write(Cson *json, char *filename);
 void cson_fprint(Cson *value, FILE *file, size_t indent);
 void cson_array_fprint(CsonArray *array, FILE *file, size_t indent);
 void cson_map_fprint(CsonMap *map, FILE *file, size_t indent);
+#endif // CSON_WRITE
+
+#ifdef CSON_PARSE
 
 /* Lexer */
 #define cson_lex_is_whitespace(c) ((c == ' ' || c == '\n' || c == '\t'))
@@ -331,7 +347,7 @@ typedef struct{
 
 CsonLexer cson_lex_init(char *buffer, size_t buffer_size, char *filename);
 bool cson_lex_next(CsonLexer *lexer, CsonToken *token);
-bool cson__lex_expect(CsonLexer *lexer, CsonToken *token, CsonTokenType types[], size_t count);
+bool cson__lex_expect(CsonLexer *lexer, CsonToken *token, CsonTokenType types[], size_t count, char *file, size_t line);
 bool cson_lex_extract(CsonToken *token, char *buffer, size_t buffer_size);
 void cson_lex_trim_left(CsonLexer *lexer);
 bool cson_lex_find(CsonLexer *lexer, char c);
@@ -340,7 +356,7 @@ bool cson_lex_is_delimeter(char c);
 bool cson_lex_is_int(char *s, char *e);
 bool cson_lex_is_float(char *s, char *e);
 
-#define cson_lex_expect(lexer, token, ...) cson__lex_expect(lexer, token, cson_token_args_array(__VA_ARGS__))
+#define cson_lex_expect(lexer, token, ...) cson__lex_expect(lexer, token, cson_token_args_array(__VA_ARGS__), __FILE__, __LINE__)
 
 /* Parser */
 #define CSON_VALUE_TOKENS CsonToken_ArrayOpen, CsonToken_MapOpen, CsonToken_Int, CsonToken_Float, CsonToken_True, CsonToken_False, CsonToken_Null, CsonToken_String
@@ -352,5 +368,6 @@ Cson* cson_read(char *filename);
 bool cson__parse_map(CsonMap *map, CsonLexer *lexer);
 bool cson__parse_array(CsonArray *map, CsonLexer *lexer);
 bool cson__parse_value(Cson **cson, CsonLexer *lexer, CsonToken *token);
+#endif // CSON_PARSE
 
 #endif // _CSON_H

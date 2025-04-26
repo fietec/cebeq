@@ -6,5 +6,12 @@
             "d:/cdemeer/geoguessr"
         ],
         "dest": "d:/testing/backups"
+    },
+    "69": {
+        "dirs": [
+            "c:/users/constantijn/desktop"
+        ],
+        "dest": "d:/testing/new_backups",
+        "prev": "d:/testing/backups/desktop"
     }
 }

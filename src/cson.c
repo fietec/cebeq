@@ -1,7 +1,6 @@
+#define CSON_WRITE
+#define CSON_PARSE
 #include <cson.h>
-
-static CsonArena cson_default_arena = {0};
-static CsonArena *cson_current_arena = &cson_default_arena;
 
 Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
 {
@@ -21,7 +20,7 @@ Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
             CsonArray *arr = next->value.array;
             next = cson_array_get(arr, arg.value.index);
             if (next == NULL){
-                cson_error(CsonError_IndexError, "Index out of bounds for array of size %u: %u", arr->size, arg.value.index);
+                cson_error(CsonError_IndexError, "Index out of bounds for array of size %zu: %zu", arr->size, arg.value.index);
                 return NULL;
             }
             continue;
@@ -69,7 +68,7 @@ Cson* cson_new(void)
     return cson;
 }
 
-Cson* cson_new_int(int value)
+Cson* cson_new_int(int32_t value)
 {
     Cson *cson = cson_alloc(cson_current_arena, sizeof(*cson));
     cson_assert_alloc(cson);
@@ -141,8 +140,11 @@ Cson* cson_new_null(void)
     return cson;
 }
 
-int cson_get_int(Cson *cson)
-{
+int64_t cson__get_int(Cson *cson) {
+    if (cson == NULL) {
+        cson_error(CsonError_InvalidParam, "Cannot extract %s from null pointer!", CsonTypeStrings[Cson_Int]);
+        return 0;
+    }
     if (cson->type != Cson_Int) {
         cson_error(CsonError_InvalidType, "Cannot convert %s to %s!", CsonTypeStrings[cson->type], CsonTypeStrings[Cson_Int]);
         return 0;
@@ -150,8 +152,11 @@ int cson_get_int(Cson *cson)
     return cson->value.integer;
 }
 
-double cson_get_float(Cson *cson)
-{
+double cson__get_float(Cson *cson) {
+    if (cson == NULL) {
+        cson_error(CsonError_InvalidParam, "Cannot extract %s from null pointer!", CsonTypeStrings[Cson_Float]);
+        return 0.0;
+    }
     if (cson->type != Cson_Float) {
         cson_error(CsonError_InvalidType, "Cannot convert %s to %s!", CsonTypeStrings[cson->type], CsonTypeStrings[Cson_Float]);
         return 0.0;
@@ -159,8 +164,11 @@ double cson_get_float(Cson *cson)
     return cson->value.floating;
 }
 
-bool cson_get_bool(Cson *cson)
-{
+bool cson__get_bool(Cson *cson) {
+    if (cson == NULL) {
+        cson_error(CsonError_InvalidParam, "Cannot extract %s from null pointer!", CsonTypeStrings[Cson_Bool]);
+        return false;
+    }
     if (cson->type != Cson_Bool) {
         cson_error(CsonError_InvalidType, "Cannot convert %s to %s!", CsonTypeStrings[cson->type], CsonTypeStrings[Cson_Bool]);
         return false;
@@ -168,8 +176,11 @@ bool cson_get_bool(Cson *cson)
     return cson->value.boolean;
 }
 
-CsonStr cson_get_string(Cson *cson)
-{
+CsonStr cson__get_string(Cson *cson) {
+    if (cson == NULL) {
+        cson_error(CsonError_InvalidParam, "Cannot extract %s from null pointer!", CsonTypeStrings[Cson_String]);
+        return (CsonStr){0};
+    }
     if (cson->type != Cson_String) {
         cson_error(CsonError_InvalidType, "Cannot convert %s to %s!", CsonTypeStrings[cson->type], CsonTypeStrings[Cson_String]);
         return (CsonStr){0};
@@ -177,8 +188,11 @@ CsonStr cson_get_string(Cson *cson)
     return cson->value.string;
 }
 
-CsonArray* cson_get_array(Cson *cson)
-{
+CsonArray* cson__get_array(Cson *cson) {
+    if (cson == NULL) {
+        cson_error(CsonError_InvalidParam, "Cannot extract %s from null pointer!", CsonTypeStrings[Cson_Array]);
+        return NULL;
+    }
     if (cson->type != Cson_Array) {
         cson_error(CsonError_InvalidType, "Cannot convert %s to %s!", CsonTypeStrings[cson->type], CsonTypeStrings[Cson_Array]);
         return NULL;
@@ -186,8 +200,11 @@ CsonArray* cson_get_array(Cson *cson)
     return cson->value.array;
 }
 
-CsonMap* cson_get_map(Cson *cson)
-{
+CsonMap* cson__get_map(Cson *cson) {
+    if (cson == NULL) {
+        cson_error(CsonError_InvalidParam, "Cannot extract %s from null pointer!", CsonTypeStrings[Cson_Map]);
+        return NULL;
+    }
     if (cson->type != Cson_Map) {
         cson_error(CsonError_InvalidType, "Cannot convert %s to %s!", CsonTypeStrings[cson->type], CsonTypeStrings[Cson_Map]);
         return NULL;
@@ -420,15 +437,15 @@ void* cson_alloc(CsonArena *arena, size_t size)
     size_t default_capacity = (arena->region_size != 0)? arena->region_size:CSON_REGION_CAPACITY;
     if (arena->first == NULL){
         cson_assert(arena->last == NULL, "Invalid arena state!: first:%p, last:%p", arena->first, arena->last);
-        size_t capacity = (all_size > default_capacity)? all_size+1:default_capacity;
+        size_t capacity = (all_size > default_capacity)? all_size:default_capacity;
         CsonRegion *region = cson__new_region(capacity);
         arena->first = region;
         arena->last = region;
     }
     CsonRegion *last = arena->last;
     if (last->size + all_size > last->capacity){
-        cson_assert(last->next == NULL, "Invalid region state!: size:%u, capacity:%u, next:%p", last->size, last->capacity, last->next);
-        size_t capacity = (all_size > default_capacity)? all_size+1:default_capacity;
+        cson_assert(arena->last == NULL, "Invalid arena state!: size:%zu, capacity:%zu, next:%p", last->size, last->capacity, last->next);
+        size_t capacity = (all_size > default_capacity)? all_size:default_capacity;
         last->next = cson__new_region(capacity);
         arena->last = last->next;
     }
@@ -545,6 +562,8 @@ size_t cson_str_memsize(CsonStr string)
     return total;
 }
 
+#ifdef CSON_WRITE
+
 #define cson_print_indent(file, indent) (fprintf((file), "%*s", (indent)*CSON_PRINT_INDENT, ""))
 
 void cson_fprint(Cson *value, FILE *file, size_t indent)
@@ -552,7 +571,7 @@ void cson_fprint(Cson *value, FILE *file, size_t indent)
     if (value == NULL || file == NULL) return;
     switch (value->type){
         case Cson_Int:{
-            fprintf(file, "%d", value->value.integer);
+            fprintf(file, "%lld", value->value.integer);
         }break;
         case Cson_Float:{
             fprintf(file, "%lf", value->value.floating);
@@ -574,6 +593,7 @@ void cson_fprint(Cson *value, FILE *file, size_t indent)
         }break;
         default:{
             cson_error(CsonError_InvalidType, "Invalid value type: %s", CsonErrorStrings[value->type]);
+            return;
         }
     }
 }
@@ -596,7 +616,7 @@ void cson_map_fprint(CsonMap *map, FILE *file, size_t indent)
     size_t size = map->size;
     for (size_t i=0; i<map->capacity; ++i){
         CsonMapItem *value = map->items[i];
-        while (value != NULL){
+        while (value){
             cson_print_indent(file, indent+1);
             fprintf(file, "\"%s\": ", value->key.value);
             cson_fprint(value->value, file, indent+1);
@@ -610,7 +630,7 @@ void cson_map_fprint(CsonMap *map, FILE *file, size_t indent)
 
 bool cson_write(Cson *json, char *filename)
 {
-    if (json == NULL) return false;
+    if (json == NULL || filename == NULL) return false;
     FILE *file = fopen(filename, "w");
     if (file == NULL){
         cson_error(CsonError_FileNotFound, "Could not find file: \"%s\"", filename);
@@ -621,7 +641,9 @@ bool cson_write(Cson *json, char *filename)
     return true;
 }
 
-// cson parse
+#endif // CSON_WRITE
+
+#ifdef CSON_PARSE
 
 CsonLexer cson_lex_init(char *buffer, size_t buffer_size, char *filename)
 {
@@ -708,7 +730,7 @@ bool cson_lex_next(CsonLexer *lexer, CsonToken *token)
                 cson_lex_set_token(token, CsonToken_Float, t_start, t_end, t_loc);
                 return true;
             }
-            cson_error(CsonError_InvalidType, "Invalid literal: \"%.*s\" at "CSON_LOC_FMT, t_len, t_start, cson_loc_expand(t_loc));
+            cson_error(CsonError_InvalidType, "Invalid literal \"%.*s\" at "CSON_LOC_FMT, t_len, t_start, cson_loc_expand(t_loc));
             cson_lex_set_token(token, CsonToken_Invalid, t_start, t_end, t_loc);
             return false;
         }
@@ -717,14 +739,14 @@ bool cson_lex_next(CsonLexer *lexer, CsonToken *token)
     return true;
 }
 
-bool cson__lex_expect(CsonLexer *lexer, CsonToken *token, CsonTokenType types[], size_t count)
+bool cson__lex_expect(CsonLexer *lexer, CsonToken *token, CsonTokenType types[], size_t count, char *file, size_t line)
 {
     if (lexer == NULL || token == NULL) return false;
     cson_lex_next(lexer, token);
     for (size_t i=0; i<count; ++i){
         if (token->type == types[i]) return true;
     }
-    cson__error_unexpected(token->loc, types, count, token->type, __FILE__, __LINE__);
+    cson__error_unexpected(token->loc, types, count, token->type, file, line);
     return false;  
 }
 
@@ -859,13 +881,20 @@ bool cson__parse_map(CsonMap *map, CsonLexer *lexer)
     if (map == NULL || lexer == NULL) return false;
     CsonToken token;
     while (true){
-        if (!cson_lex_expect(lexer, &token, CsonToken_String, CsonToken_MapClose)) return false;
-        if (token.type == CsonToken_MapClose && map->size > 0){
-            if (map->size > 0){
-                cson_error_unexpected(token.loc, token.type, CSON_VALUE_TOKENS);
+        cson_lex_next(lexer, &token);
+        switch (token.type){
+            case CsonToken_String: break;
+            case CsonToken_MapClose:{
+                if (map->size > 0){
+                    cson_error_unexpected(token.loc, token.type, CSON_VALUE_TOKENS);
+                    return false;
+                }
+                return true;
+            }
+            default: {
+                cson_error_unexpected(token.loc, token.type, CsonToken_String, CsonToken_MapClose);
                 return false;
             }
-            return true;
         }
         size_t key_size = token.len+1;
         char key_buffer[key_size];
@@ -879,7 +908,6 @@ bool cson__parse_map(CsonMap *map, CsonLexer *lexer)
         switch (token.type){
             case CsonToken_Sep:break;
             case CsonToken_MapClose:return true;
-            default: return false;
         }
     }
 }
@@ -895,7 +923,7 @@ bool cson__parse_array(CsonArray *array, CsonLexer *lexer)
                 cson_error_unexpected(token.loc, token.type, CSON_VALUE_TOKENS);
                 return false;
             }
-            return true;
+            return true;;
         }
         Cson *cson = NULL;
         if (!cson__parse_value(&cson, lexer, &token)) return false;
@@ -904,7 +932,6 @@ bool cson__parse_array(CsonArray *array, CsonLexer *lexer)
         switch (token.type){
             case CsonToken_Sep: break;
             case CsonToken_ArrayClose: return true;
-            default: return false;
         }
     }
     return false;
@@ -928,7 +955,7 @@ bool cson__parse_value(Cson **cson, CsonLexer *lexer, CsonToken *token)
             *cson = cson_new_map(map);
         }break;
         case CsonToken_Int:{
-            *cson = cson_new_int(atoi(buffer));
+            *cson = cson_new_int(atoll(buffer));
         }break;
         case CsonToken_Float:{
             *cson = cson_new_float(atof(buffer));
@@ -945,9 +972,6 @@ bool cson__parse_value(Cson **cson, CsonLexer *lexer, CsonToken *token)
         case CsonToken_Null:{
             *cson = cson_new_null();
         }break;
-        default:{
-            return false;
-        }
     }
     return true;
 }
@@ -999,14 +1023,11 @@ Cson* cson_read(char *filename){
     }
     uint64_t file_size = cson_file_size(filename);
     char *file_content = (char*) calloc(file_size+1, sizeof(*file_content));
-    if (!file_content){
-        fclose(file);
-        cson_error(CsonError_Alloc, "Out of memory!");
-        return NULL;
-    }
+    cson_assert_alloc(file_content);
     fread(file_content, 1, file_size, file);
     fclose(file);
     Cson *cson = cson_parse_buffer(file_content, file_size, filename);
     free(file_content);
     return cson;
 }
+#endif // CSON_PARSE
