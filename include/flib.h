@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <assert.h>
 #include <sys/stat.h>
 #include <fcntl.h>

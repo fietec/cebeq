@@ -20,7 +20,7 @@ Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
             CsonArray *arr = next->value.array;
             next = cson_array_get(arr, arg.value.index);
             if (next == NULL){
-                cson_error(CsonError_IndexError, "Index out of bounds for array of size %zu: %zu", arr->size, arg.value.index);
+                cson_error(CsonError_IndexError, "Index out of bounds for array of size %u: %u", arr->size, arg.value.index);
                 return NULL;
             }
             continue;
@@ -444,7 +444,7 @@ void* cson_alloc(CsonArena *arena, size_t size)
     }
     CsonRegion *last = arena->last;
     if (last->size + all_size > last->capacity){
-        cson_assert(arena->last == NULL, "Invalid arena state!: size:%zu, capacity:%zu, next:%p", last->size, last->capacity, last->next);
+        cson_assert(arena->last == NULL, "Invalid arena state!: size:%u, capacity:%u, next:%p", last->size, last->capacity, last->next);
         size_t capacity = (all_size > default_capacity)? all_size:default_capacity;
         last->next = cson__new_region(capacity);
         arena->last = last->next;
@@ -571,7 +571,7 @@ void cson_fprint(Cson *value, FILE *file, size_t indent)
     if (value == NULL || file == NULL) return;
     switch (value->type){
         case Cson_Int:{
-            fprintf(file, "%lld", value->value.integer);
+            fprintf(file, "%"PRId64, value->value.integer);
         }break;
         case Cson_Float:{
             fprintf(file, "%lf", value->value.floating);
@@ -785,10 +785,10 @@ bool cson_lex_extract(CsonToken *token, char *buffer, size_t buffer_size)
             r++;
             w++;
         }
-        sprintf(buffer, "%.*s\0", w-temp_buffer+1, temp_buffer);
+        sprintf(buffer, "%.*s", w-temp_buffer+1, temp_buffer);
     }
     else{
-        sprintf(buffer, "%.*s\0", token->len, token->t_start);
+        sprintf(buffer, "%.*s", token->len, token->t_start);
     }
     return true;
 }
@@ -908,6 +908,7 @@ bool cson__parse_map(CsonMap *map, CsonLexer *lexer)
         switch (token.type){
             case CsonToken_Sep:break;
             case CsonToken_MapClose:return true;
+            default: {}
         }
     }
 }
@@ -932,6 +933,7 @@ bool cson__parse_array(CsonArray *array, CsonLexer *lexer)
         switch (token.type){
             case CsonToken_Sep: break;
             case CsonToken_ArrayClose: return true;
+            default: {}
         }
     }
     return false;
@@ -972,6 +974,7 @@ bool cson__parse_value(Cson **cson, CsonLexer *lexer, CsonToken *token)
         case CsonToken_Null:{
             *cson = cson_new_null();
         }break;
+        default: {}
     }
     return true;
 }

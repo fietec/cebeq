@@ -120,6 +120,7 @@ int copy_dir_rec(const char *src, const char *dest)
         }
     }
     closedir(dir);
+    return 0;
 }
 
 fsize_t flib_size(const char *path)
@@ -235,7 +236,7 @@ void flib_print_entry(flib_entry entry)
 {
     switch(entry.type){
         case FLIB_FILE:{
-            printf("File: '%s' ('%s'): size: %llu", entry.path, entry.name, entry.size);
+            printf("File: '%s' '%s', size: %"PRIu64, entry.path, entry.name, entry.size);
             struct tm *time_info;
             char time_string[20];
             time_info = localtime(&entry.mod_time);

@@ -31,6 +31,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <ctype.h>
 #include <sys/stat.h>
 

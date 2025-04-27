@@ -2,6 +2,7 @@
 #define _SYNCIT_H
 
 #include <stdio.h>
+#include <inttypes.h>
 
 #define BACKUPS_JSON "D:/cdemeer/Programming/C/syncit/data/backups.json"
 #define FULL_BACKUPS_JSON "D:/cdemeer/Programming/C/syncit/data/full_backups.json"
