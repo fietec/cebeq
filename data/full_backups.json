@@ -9,9 +9,10 @@
     },
     "69": {
         "dirs": [
-            "c:/users/constantijn/desktop"
+            "c:/users/constantijn/desktop",
+            "d:/cdemeer/geoguessr"
         ],
         "dest": "d:/testing/new_backups",
-        "prev": "d:/testing/backups/desktop"
+        "prev": "d:/testing/backups"
     }
 }

@@ -181,6 +181,9 @@ CsonStr cson__get_string(Cson *cson) {
         cson_error(CsonError_InvalidParam, "Cannot extract %s from null pointer!", CsonTypeStrings[Cson_String]);
         return (CsonStr){0};
     }
+    if (cson->type == Cson_Null){
+        return (CsonStr) {.value=NULL, .len=0};
+    }
     if (cson->type != Cson_String) {
         cson_error(CsonError_InvalidType, "Cannot convert %s to %s!", CsonTypeStrings[cson->type], CsonTypeStrings[Cson_String]);
         return (CsonStr){0};
@@ -402,6 +405,20 @@ size_t cson_map_memsize(CsonMap *map)
         }
     }
     return total;
+}
+
+CsonArray *cson_map_keys(CsonMap *map)
+{
+    if (map == NULL) return NULL;
+    CsonArray *array = cson_array_new();
+    for (size_t i=0; i<map->capacity; ++i){
+        CsonMapItem *item = map->items[i];
+        while (item != NULL){
+            cson_array_push(array, cson_new_string(cson_str_new(item->key.value)));
+            item = item->next;
+        }
+    }
+    return array;
 }
 
 /* Memory management */

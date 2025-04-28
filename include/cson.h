@@ -249,6 +249,7 @@ CsonMap* cson_map_new(void);
 CsonError cson_map_insert(CsonMap *map, CsonStr key, Cson *value);
 CsonError cson_map_remove(CsonMap *map, CsonStr key);
 Cson* cson_map_get(CsonMap *map, CsonStr key);
+CsonArray *cson_map_keys(CsonMap *map);
 size_t cson_map_memsize(CsonMap *map);
 
 CsonRegion* cson__new_region(size_t capacity);

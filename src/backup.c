@@ -42,16 +42,16 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
     int value = 0;
     DIR *dir = opendir(src);
     if (dir == NULL){
-        eprintfn("This is no valid directory: '%s'!", src);
+        eprintfn("This is no valid src directory: '%s'!", src);
         return 1;
     }
     if (!flib_isdir(dest)){
-        eprintfn("This is no valid directory: '%s'!", dest);
+        eprintfn("This is no valid dest directory: '%s'!", dest);
         closedir(dir);
         return 1;
     }
     if (prev != NULL && !flib_isdir(prev)){
-        eprintfn("This is no valid directory: '%s'!", prev);
+        eprintfn("This is no valid previous directory: '%s'!", prev);
         closedir(dir);
         return 1;
     }
@@ -119,8 +119,24 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
                 }
                 if (!create_dir(item_dest_path)) return_defer(1);
                 if (make_backup_rec(entry.path, item_dest_path, p) == 1) return_defer(1);
+            } break;
+            default : {
+                eprintfn("Unsupported file type of '%s'!", entry.path);
             }
-            default : {}
+        }
+    }
+    if (prev_files != NULL){
+        CsonArray *deleted_files = cson_map_keys(prev_files);
+        for (size_t i=0; i<deleted_files->size; ++i){
+            CsonStr del_file = cson_get_string(cson_array_get(deleted_files, i));
+            cson_map_insert(files, del_file, cson_new_int(-1));
+        }
+    }
+    if (prev_dirs != NULL){
+        CsonArray *deleted_dirs = cson_map_keys(prev_dirs);
+        for (size_t i=0; i<deleted_dirs->size; ++i){
+            CsonStr del_dir = cson_get_string(cson_array_get(deleted_dirs, i));
+            cson_map_insert(dirs, del_dir, cson_new_int(-1));
         }
     }
     
@@ -139,24 +155,29 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
 int make_backup(const char *src, const char *dest, const char *prev)
 {
     if (!flib_isdir(src)){
-        eprintfn("This is no valid directory: '%s'!", src);
+        eprintfn("This is no valid source directory: '%s'!", src);
         return 1;
     }
     if (!flib_isdir(dest)){
-        eprintfn("This is no valid directory: '%s'!", dest);
+        eprintfn("This is no valid destination directory: '%s'!", dest);
         return 1;
     }
     if (prev != NULL && !flib_isdir(prev)){
-        eprintfn("This is no valid directory: '%s'!", prev);
+        eprintfn("This is no valid previous directory: '%s'!", prev);
         return 1;
     }
     char dest_path[FILENAME_MAX] = {0};
+    char prev_path[FILENAME_MAX] = {0};
     const char *name = NULL;
     size_t name_length = 0;
     cwk_path_get_basename(src, &name, &name_length);
     cwk_path_join(dest, name, dest_path, FILENAME_MAX);
     if (!create_dir(dest_path)) return 1;
-    return make_backup_rec(src, dest_path, prev);
+    if (prev == NULL){
+        return make_backup_rec(src, dest_path, NULL);
+    }
+    cwk_path_join(prev, name, prev_path, FILENAME_MAX);
+    return make_backup_rec(src, dest_path, prev_path);
 }
 
 int main(void)
@@ -177,14 +198,6 @@ int main(void)
         iprintfn("Copying dirs '%s' -> '%s'", src, dest);
         make_backup(src, dest, prev);
     }
-    DIR *dir = opendir(dest);
-    if (dir == NULL){
-        eprintfn("Could not open dir '%s'!", dest);
-        return 1;
-    }
-    flib_entry entry;
-    while (flib_get_entry(dir, dest, &entry)){
-        flib_print_entry(entry);
-    }
+    iprintfn("Successfully created backup\n");
     return 0;
 }
