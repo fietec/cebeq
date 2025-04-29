@@ -194,11 +194,15 @@ struct CsonRegion{
     uintptr_t data[];
 };
 
-static CsonArena cson_default_arena = {0};
-static CsonArena *cson_current_arena = &cson_default_arena;
-
 #define key(kstr) ((CsonArg) {.value.key=cson_str(kstr), .type=CsonArg_Key})
 #define index(istr) ((CsonArg) {.value.index=(size_t)(istr), .type=CsonArg_Index})
+
+#define cson__to_int(cson)    (cson)->value.integer
+#define cson__to_float(cson)  (cson)->value.floating
+#define cson__to_bool(cson)   (cson)->value.boolean
+#define cson__to_string(cson) (cson)->value.string
+#define cson__to_array(cson)  (cson)->value.array
+#define cson__to_map(cson)    (cson)->value.map
 
 // macros for multi-level searching
 #define cson_get(cson, ...) cson__get(cson, cson_args_array((CsonArg){0}, ##__VA_ARGS__))
@@ -219,6 +223,7 @@ Cson* cson_new_string(CsonStr value);
 Cson* cson_new_cstring(char *cstr);
 Cson* cson_new_array(CsonArray *value);
 Cson* cson_new_map(CsonMap *value);
+Cson* cson_new_cson(Cson *cson);
 
 size_t cson_len(Cson *cson);
 size_t cson_memsize(Cson *cson);
@@ -238,19 +243,21 @@ bool cson_is_array(Cson *cson);
 bool cson_is_map(Cson *cson);
 bool cson_is_null(Cson *cson);
 
-CsonArray* cson_array_new(void);
-CsonError cson_array_push(CsonArray *array, Cson *value);
-CsonError cson_array_pop(CsonArray *array, size_t index);
-Cson* cson_array_get(CsonArray *array, size_t index);
-Cson* cson_array_get_last(CsonArray *array);
-size_t cson_array_memsize(CsonArray *array);
+Cson* cson_array_new(void);
+CsonError cson_array_push(Cson *array, Cson *value);
+CsonError cson_array_pop(Cson *array, size_t index);
+Cson* cson_array_get(Cson *array, size_t index);
+Cson* cson_array_get_last(Cson *array);
+Cson* cson_array_dup(Cson *array);
+size_t cson_array_memsize(Cson *array);
 
-CsonMap* cson_map_new(void);
-CsonError cson_map_insert(CsonMap *map, CsonStr key, Cson *value);
-CsonError cson_map_remove(CsonMap *map, CsonStr key);
-Cson* cson_map_get(CsonMap *map, CsonStr key);
-CsonArray *cson_map_keys(CsonMap *map);
-size_t cson_map_memsize(CsonMap *map);
+Cson* cson_map_new(void);
+CsonError cson_map_insert(Cson *map, CsonStr key, Cson *value);
+CsonError cson_map_remove(Cson *map, CsonStr key);
+Cson* cson_map_get(Cson *map, CsonStr key);
+Cson *cson_map_keys(Cson *map);
+Cson* cson_map_dup(Cson *map);
+size_t cson_map_memsize(Cson *map);
 
 CsonRegion* cson__new_region(size_t capacity);
 void* cson_alloc(CsonArena *arena, size_t size);
@@ -261,6 +268,7 @@ void cson_swap_and_free_arena(CsonArena *arena);
 
 #define cson_str(string) ((CsonStr){.value=(string), .len=strlen(string)})
 CsonStr cson_str_new(char *cstr);
+CsonStr cson_str_dup(CsonStr str);
 uint32_t cson_str_hash(CsonStr str);
 bool cson_str_equals(CsonStr a, CsonStr b);
 size_t cson_str_memsize(CsonStr str);
@@ -367,8 +375,8 @@ bool cson_lex_is_float(char *s, char *e);
 void cson__error_unexpected(CsonLoc loc, CsonTokenType expected[], size_t expected_count, CsonTokenType actual, char *filename, size_t line);
 Cson* cson_parse_buffer(char *buffer, size_t buffer_size, char *filename);
 Cson* cson_read(char *filename);
-bool cson__parse_map(CsonMap *map, CsonLexer *lexer);
-bool cson__parse_array(CsonArray *map, CsonLexer *lexer);
+bool cson__parse_map(Cson *map, CsonLexer *lexer);
+bool cson__parse_array(Cson *array, CsonLexer *lexer);
 bool cson__parse_value(Cson **cson, CsonLexer *lexer, CsonToken *token);
 #endif // CSON_PARSE
 

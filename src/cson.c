@@ -2,6 +2,9 @@
 #define CSON_PARSE
 #include <cson.h>
 
+static CsonArena cson_default_arena = {0};
+static CsonArena *cson_current_arena = &cson_default_arena;
+
 Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
 {
     if (cson == NULL) return NULL;
@@ -9,7 +12,7 @@ Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
     for (size_t i=0; i<count; ++i){
         CsonArg arg = args[i];
         if (arg.type == CsonArg_Key && next->type == Cson_Map){
-            next = cson_map_get(next->value.map, arg.value.key);
+            next = cson_map_get(next, arg.value.key);
             if (next == NULL){
                 cson_error(CsonError_KeyError, "No such key in map: \"%s\"", arg.value.key.value);
                 return NULL;
@@ -17,10 +20,9 @@ Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
             continue;
         }
         else if (arg.type == CsonArg_Index && next->type == Cson_Array){
-            CsonArray *arr = next->value.array;
-            next = cson_array_get(arr, arg.value.index);
+            next = cson_array_get(next, arg.value.index);
             if (next == NULL){
-                cson_error(CsonError_IndexError, "Index out of bounds for array of size %u: %u", arr->size, arg.value.index);
+                cson_error(CsonError_IndexError, "Index out of bounds for array of size %u: %u", cson_len(next), arg.value.index);
                 return NULL;
             }
             continue;
@@ -51,8 +53,8 @@ size_t cson_memsize(Cson *cson)
     if (cson == NULL) return 0;
     size_t total = sizeof(Cson);
     switch (cson->type){
-        case Cson_Array: total += cson_array_memsize(cson->value.array); break;
-        case Cson_Map: total += cson_map_memsize(cson->value.map); break;
+        case Cson_Array: total += cson_array_memsize(cson); break;
+        case Cson_Map: total += cson_map_memsize(cson); break;
         case Cson_String: total += cson_str_memsize(cson->value.string); break;
         default: break;
     }
@@ -138,6 +140,23 @@ Cson* cson_new_null(void)
     cson->type = Cson_Null;
     cson->value.null = NULL;
     return cson;
+}
+
+Cson* cson_new_cson(Cson *cson)
+{
+    if (cson == NULL) return NULL;
+    switch (cson->type){
+        case Cson_Int: return cson_new_int(cson__to_int(cson));
+        case Cson_Float: return cson_new_float(cson__to_float(cson));
+        case Cson_Bool: return cson_new_bool(cson__to_bool(cson));
+        case Cson_String: return cson_new_string(cson_str_dup(cson__to_string(cson)));
+        case Cson_Array: return cson_array_dup(cson);
+        case Cson_Map: return cson_map_dup(cson);
+        default: {
+            cson_error(CsonError_InvalidType, "Cson is of an invalid type: %d!", cson->type);
+            return NULL;
+        }
+    }
 }
 
 int64_t cson__get_int(Cson *cson) {
@@ -259,63 +278,79 @@ bool cson_is_null(Cson *cson)
 
 /* Array implementation */
 
-CsonArray* cson_array_new(void)
+Cson* cson_array_new(void)
 {
     CsonArray *array = cson_alloc(cson_current_arena, sizeof(*array) + CSON_DEF_ARRAY_CAPACITY*sizeof(Cson*));
     cson_assert_alloc(array);
     array->size = 0;
     array->capacity = CSON_DEF_ARRAY_CAPACITY;
     array->items = (Cson**) (array+1);
-    return array;
+    return cson_new_array(array);
 }
 
-CsonError cson_array_push(CsonArray *array, Cson *value)
+CsonError cson_array_push(Cson *array, Cson *value)
 {
     if (array == NULL || value == NULL) return CsonError_InvalidParam;
-    if (array->size >= array->capacity){
-        size_t new_capacity = array->capacity * CSON_ARRAY_MUL_F;
-        array->items = cson_realloc(cson_current_arena, array->items, array->capacity*sizeof(Cson*), new_capacity*sizeof(Cson));
-        array->capacity = new_capacity;
+    if (array->type != Cson_Array) return CsonError_InvalidType;
+    CsonArray *arr = array->value.array;
+    if (arr->size >= arr->capacity){
+        size_t new_capacity = arr->capacity * CSON_ARRAY_MUL_F;
+        arr->items = cson_realloc(cson_current_arena, arr->items, arr->capacity*sizeof(Cson*), new_capacity*sizeof(Cson));
+        arr->capacity = new_capacity;
     }
-    array->items[array->size++] = value;
+    arr->items[arr->size++] = value;
     return CsonError_Success;
 }
 
-Cson* cson_array_get(CsonArray *array, size_t index)
+Cson* cson_array_get(Cson *array, size_t index)
 {
-    if (array == NULL || index >= array->size) return NULL;
-    return array->items[index];
+    if (array == NULL || array->type != Cson_Array || index >= cson_len(array)) return NULL;
+    return cson__to_array(array)->items[index];
 }
 
-Cson* cson_array_get_last(CsonArray *array)
+Cson* cson_array_get_last(Cson *array)
 {
-    if (array == NULL || array->size == 0) return NULL;
-    return array->items[array->size-1];
+    if (array == NULL || array->type != Cson_Array || cson_len(array) == 0) return NULL;
+    CsonArray *arr = cson__to_array(array);
+    return arr->items[arr->size-1];
 }
 
-CsonError cson_array_pop(CsonArray *array, size_t index)
+CsonError cson_array_pop(Cson *array, size_t index)
 {
     if (array == NULL) return CsonError_InvalidParam;
-    if (index >= array->size) return CsonError_IndexError;
-    for (size_t i=index; i<array->capacity-1; ++i){
-        array->items[i] = array->items[i+1];
+    if (array->type != Cson_Array) return CsonError_InvalidType;
+    CsonArray *arr = cson__to_array(array);
+    if (index >= arr->size) return CsonError_IndexError;
+    for (size_t i=index; i<arr->capacity-1; ++i){
+        arr->items[i] = arr->items[i+1];
     }
     return CsonError_Success;
 }
 
-size_t cson_array_memsize(CsonArray *array)
+Cson* cson_array_dup(Cson *array)
 {
-    if (array == NULL) return 0;
+    if (array == NULL || array->type != Cson_Array) return NULL;
+    Cson *new_array = cson_array_new();
+    for (size_t i=0; i<cson_len(array); ++i){
+        cson_array_push(new_array, cson_new_cson(cson_array_get(array, i)));
+    }
+    return new_array;
+}
+
+size_t cson_array_memsize(Cson *array)
+{
+    if (array == NULL || array->type != Cson_Array) return 0;
     size_t total = sizeof(CsonArray);
-    for (size_t i=0; i<array->size; ++i){
-        total += cson_memsize(array->items[i]);
+    CsonArray *arr = cson__to_array(array);
+    for (size_t i=0; i<arr->size; ++i){
+        total += cson_memsize(arr->items[i]);
     }
     return total;
 }
 
 /* Map implementation */
 
-CsonMap* cson_map_new(void)
+Cson* cson_map_new(void)
 {
     CsonMap *map = cson_alloc(cson_current_arena, sizeof(*map) + CSON_MAP_CAPACITY*sizeof(CsonMapItem*));
     cson_assert_alloc(map);
@@ -323,7 +358,7 @@ CsonMap* cson_map_new(void)
     map->capacity = CSON_MAP_CAPACITY;
     map->items = (CsonMapItem**) (map+1);
     cson_assert_alloc(map->items);
-    return map;
+    return cson_new_map(map);
 }
 
 CsonMapItem* cson_map_item_new(CsonStr key, Cson *value)
@@ -336,11 +371,13 @@ CsonMapItem* cson_map_item_new(CsonStr key, Cson *value)
     return item;
 }
 
-CsonError cson_map_insert(CsonMap *map, CsonStr key, Cson *value)
+CsonError cson_map_insert(Cson *map, CsonStr key, Cson *value)
 {
     if (map == NULL || key.value == NULL || value == NULL) return CsonError_InvalidParam;
-    size_t index = cson_str_hash(key) % map->capacity;
-    CsonMapItem *item = map->items[index];
+    if (map->type != Cson_Map) return CsonError_InvalidType;
+    CsonMap *i_map = cson__to_map(map);
+    size_t index = cson_str_hash(key) % i_map->capacity;
+    CsonMapItem *item = i_map->items[index];
     if (item != NULL){
         do {
             if (cson_str_equals(item->key, key)){
@@ -353,27 +390,29 @@ CsonError cson_map_insert(CsonMap *map, CsonStr key, Cson *value)
         item->next = cson_map_item_new(key, value);
     }
     else{
-        map->items[index] = cson_map_item_new(key, value);
+        i_map->items[index] = cson_map_item_new(key, value);
     }
-    map->size++;
+    i_map->size++;
     return CsonError_Success;
 }
 
-CsonError cson_map_remove(CsonMap *map, CsonStr key)
+CsonError cson_map_remove(Cson *map, CsonStr key)
 {
     if (map == NULL || key.value == NULL) return CsonError_InvalidParam;
-    size_t index = cson_str_hash(key) % map->capacity;
-    CsonMapItem *item = map->items[index];
+    if (map->type != Cson_Map) return CsonError_InvalidType;
+    CsonMap *i_map = cson__to_map(map);
+    size_t index = cson_str_hash(key) % i_map->capacity;
+    CsonMapItem *item = i_map->items[index];
     if (item == NULL) return CsonError_KeyError;
     if (cson_str_equals(item->key, key)){
-        map->items[index] = item->next;
-        map->size--;
+        i_map->items[index] = item->next;
+        i_map->size--;
         return CsonError_Success;
     }
     while (item->next != NULL){
         if (cson_str_equals(item->next->key, key)){
             item->next = item->next->next;
-            map->size--;
+            i_map->size--;
             return CsonError_Success;
         }
         item = item->next;
@@ -381,11 +420,13 @@ CsonError cson_map_remove(CsonMap *map, CsonStr key)
     return CsonError_KeyError;
 }
 
-Cson* cson_map_get(CsonMap *map, CsonStr key)
+Cson* cson_map_get(Cson *map, CsonStr key)
 {
     if (map == NULL || key.value == NULL) return NULL;
-    size_t index = cson_str_hash(key) % map->capacity;
-    CsonMapItem *item = map->items[index];
+    if (map->type != Cson_Map) return NULL;
+    CsonMap *i_map = cson__to_map(map);
+    size_t index = cson_str_hash(key) % i_map->capacity;
+    CsonMapItem *item = i_map->items[index];
     while (item != NULL){
         if (cson_str_equals(item->key, key)) return item->value;
         item = item->next;
@@ -393,12 +434,25 @@ Cson* cson_map_get(CsonMap *map, CsonStr key)
     return NULL;
 }
 
-size_t cson_map_memsize(CsonMap *map)
+Cson* cson_map_dup(Cson *map)
 {
-    if (map == NULL) return 0;
+    if (map == NULL || map->type != Cson_Map) return NULL;
+    Cson* new_map = cson_map_new();
+    Cson* keys = cson_map_keys(map);
+    for (size_t i=0; i<cson_len(keys); ++i){
+        CsonStr key = cson__to_string(cson_array_get(keys, i));
+        cson_map_insert(new_map, key, cson_new_cson(cson_map_get(map, key)));
+    }
+    return new_map;
+}
+
+size_t cson_map_memsize(Cson *map)
+{
+    if (map == NULL || map->type != Cson_Map) return 0;
+    CsonMap *i_map = cson__to_map(map);
     size_t total = sizeof(CsonMap);
-    for (size_t i=0; i<map->capacity; ++i){
-        CsonMapItem *item = map->items[i];
+    for (size_t i=0; i<i_map->capacity; ++i){
+        CsonMapItem *item = i_map->items[i];
         while (item != NULL){
             total += (sizeof(CsonMapItem) + cson_str_memsize(item->key) + cson_memsize(item->value));
             item = item->next;
@@ -407,14 +461,15 @@ size_t cson_map_memsize(CsonMap *map)
     return total;
 }
 
-CsonArray *cson_map_keys(CsonMap *map)
+Cson *cson_map_keys(Cson *map)
 {
-    if (map == NULL) return NULL;
-    CsonArray *array = cson_array_new();
-    for (size_t i=0; i<map->capacity; ++i){
-        CsonMapItem *item = map->items[i];
+    if (map == NULL || map->type != Cson_Map) return NULL;
+    CsonMap *i_map = cson__to_map(map);
+    Cson *array = cson_array_new();
+    for (size_t i=0; i<i_map->capacity; ++i){
+        CsonMapItem *item = i_map->items[i];
         while (item != NULL){
-            cson_array_push(array, cson_new_string(cson_str_new(item->key.value)));
+            cson_array_push(array, cson_new_string(cson_str_dup(item->key)));
             item = item->next;
         }
     }
@@ -551,6 +606,11 @@ CsonStr cson_str_new(char *cstr)
     size_t len = strlen(cstr);
     char *value = cson_dup(cson_current_arena, cstr, len, len+1);
     return (CsonStr) {.value=value, .len=len};
+}
+
+CsonStr cson_str_dup(CsonStr str)
+{
+    return (CsonStr) {.value=cson_dup(cson_current_arena, str.value, str.len, str.len+1), .len=str.len};
 }
 
 uint32_t cson_str_hash(CsonStr str)
@@ -893,16 +953,16 @@ void cson__error_unexpected(CsonLoc loc, CsonTokenType expected[], size_t expect
 
 /* Parser implementation */
 
-bool cson__parse_map(CsonMap *map, CsonLexer *lexer)
+bool cson__parse_map(Cson *map, CsonLexer *lexer)
 {
-    if (map == NULL || lexer == NULL) return false;
+    if (map == NULL || map->type != Cson_Map || lexer == NULL) return false;
     CsonToken token;
     while (true){
         cson_lex_next(lexer, &token);
         switch (token.type){
             case CsonToken_String: break;
             case CsonToken_MapClose:{
-                if (map->size > 0){
+                if (cson_len(map) > 0){
                     cson_error_unexpected(token.loc, token.type, CSON_VALUE_TOKENS);
                     return false;
                 }
@@ -930,14 +990,14 @@ bool cson__parse_map(CsonMap *map, CsonLexer *lexer)
     }
 }
 
-bool cson__parse_array(CsonArray *array, CsonLexer *lexer)
+bool cson__parse_array(Cson *array, CsonLexer *lexer)
 {
-    if (array == NULL || lexer == NULL) return false;
+    if (array == NULL || array->type != Cson_Array || lexer == NULL) return false;
     CsonToken token;
     while (true){
         if (!cson_lex_expect(lexer, &token, CSON_VALUE_TOKENS, CsonToken_ArrayClose)) return false;
         if (token.type == CsonToken_ArrayClose){
-            if (array->size > 0){
+            if (cson_len(array) > 0){
                 cson_error_unexpected(token.loc, token.type, CSON_VALUE_TOKENS);
                 return false;
             }
@@ -964,14 +1024,14 @@ bool cson__parse_value(Cson **cson, CsonLexer *lexer, CsonToken *token)
     cson_lex_extract(token, buffer, buff_size);
     switch (token->type){
         case CsonToken_ArrayOpen:{
-            CsonArray *array = cson_array_new();
+            Cson *array = cson_array_new();
             if (!cson__parse_array(array, lexer)) return false;
-            *cson = cson_new_array(array);
+            *cson = array;
         }break;
         case CsonToken_MapOpen:{
-            CsonMap *map = cson_map_new();
+            Cson *map = cson_map_new();
             if (!cson__parse_map(map, lexer)) return false;
-            *cson = cson_new_map(map);
+            *cson = map;
         }break;
         case CsonToken_Int:{
             *cson = cson_new_int(atoll(buffer));
@@ -1012,15 +1072,15 @@ Cson* cson_parse_buffer(char *buffer, size_t buffer_size, char *filename)
     Cson *cson = NULL;
     switch(token.type){
         case CsonToken_ArrayOpen:{
-            CsonArray *array = cson_array_new();
+            Cson *array = cson_array_new();
             if (cson__parse_array(array, &lexer)){
-                cson = cson_new_array(array);
+                cson = array;
             }
         }break;
         case CsonToken_MapOpen:{
-            CsonMap *map = cson_map_new();
+            Cson *map = cson_map_new();
             if (cson__parse_map(map, &lexer)){
-                cson = cson_new_map(map);
+                cson = map;
             }
         }break;
         default:{
@@ -1038,7 +1098,7 @@ Cson* cson_parse_buffer(char *buffer, size_t buffer_size, char *filename)
 Cson* cson_read(char *filename){
     FILE *file = fopen(filename, "r");
     if (file == NULL){
-        cson_error(CsonError_FileNotFound, "Could not find file: \"%s\"", filename);
+        cson_error(CsonError_FileNotFound, "Could open file: \"%s\"", filename);
         return NULL;
     }
     uint64_t file_size = cson_file_size(filename);

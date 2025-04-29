@@ -4,10 +4,12 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#define BACKUPS_JSON "D:/cdemeer/Programming/C/syncit/data/backups.json"
-#define FULL_BACKUPS_JSON "D:/cdemeer/Programming/C/syncit/data/full_backups.json"
+#define PROGRAM_NAME "cebeq"
 
-#define INFO_FILE ".syncit"
+#define BACKUPS_JSON "D:/cdemeer/Programming/C/" PROGRAM_NAME "/data/backups.json"
+#define FULL_BACKUPS_JSON "D:/cdemeer/Programming/C/" PROGRAM_NAME "/data/full_backups.json"
+
+#define INFO_FILE "." PROGRAM_NAME
 
 #define s_bool(s) ((s)>0? "true": "false")
 
