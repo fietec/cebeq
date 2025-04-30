@@ -2,9 +2,6 @@
 #define CSON_PARSE
 #include <cson.h>
 
-static CsonArena cson_default_arena = {0};
-static CsonArena *cson_current_arena = &cson_default_arena;
-
 Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
 {
     if (cson == NULL) return NULL;

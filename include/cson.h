@@ -224,6 +224,7 @@ Cson* cson_new_cstring(char *cstr);
 Cson* cson_new_array(CsonArray *value);
 Cson* cson_new_map(CsonMap *value);
 Cson* cson_new_cson(Cson *cson);
+Cson* cson_new_null();
 
 size_t cson_len(Cson *cson);
 size_t cson_memsize(Cson *cson);
@@ -258,6 +259,9 @@ Cson* cson_map_get(Cson *map, CsonStr key);
 Cson *cson_map_keys(Cson *map);
 Cson* cson_map_dup(Cson *map);
 size_t cson_map_memsize(Cson *map);
+
+static CsonArena cson_default_arena = {0};
+static CsonArena *cson_current_arena = &cson_default_arena;
 
 CsonRegion* cson__new_region(size_t capacity);
 void* cson_alloc(CsonArena *arena, size_t size);

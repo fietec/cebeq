@@ -1,11 +1,6 @@
-#include <time.h>
-#include <sys/stat.h>
 #include <stdbool.h>
 #include <string.h>
-#include <dirent.h>
-#ifdef _WIN32
-    #include <windows.h>
-#endif // _WIN32
+#include <unistd.h>
 
 #define CSON_PARSE
 #define CSON_WRITE
@@ -17,6 +12,7 @@
 bool path_in_backup(const char *path, const char *backup)
 {
     if (path == NULL || backup == NULL) return false;
+    bool value = true;
     char info_path[FILENAME_MAX] = {0};
     cwk_path_join(backup, INFO_FILE, info_path, FILENAME_MAX);
     
@@ -27,11 +23,40 @@ bool path_in_backup(const char *path, const char *backup)
     Cson *info = cson_read(info_path);
     if (info == NULL){
         eprintfn("Could not find backup file '%s'!", info_path);
-        return false;
+        return_defer(false);
     }
-    if (cson_get_string(info, key("dirs"), key("path")).value == NULL) return false;
+    Cson *dirs = cson_get(info, key("dirs"));
+    if (dirs == NULL){
+        eprintfn("Could not find a 'dirs' entry in '%s'!", info_path);
+        return_defer(false);
+    }
+    for (size_t i=0; i<cson_len(dirs); ++i){
+        CsonStr dir = cson_get_string(dirs, index(i));
+        if (strcmp(path, dir.value) == 0) return_defer(true);
+    }
+    return_defer(false);
+  defer:
     cson_swap_and_free_arena(prev_arena);
-    return true;
+    return value;
+}
+
+int delete_dir(const char *path)
+{
+    DIR *dir = opendir(path);
+    if (dir == NULL){
+        eprintfn("Could not find dir '%s'!", path);
+        return 1;
+    }
+    flib_entry entry;
+    while (flib_get_entry(dir, path, &entry)){
+        if (entry.type == FLIB_DIR){
+            delete_dir(entry.path);
+        } else{
+            unlink(entry.path);
+        }
+    }
+    closedir(dir);
+    return rmdir(path);
 }
 
 int make_backup_rec(const char *src, const char *dest, const char *prev)
@@ -152,7 +177,7 @@ int backup_init(const char *src, const char *dest, const char *parent)
 {
     if (parent != NULL){
         if (!path_in_backup(src, parent)){
-            eprintfn("'%s' is included in parent backup '%s'!", src, parent);
+            eprintfn("'%s' is not included in parent backup '%s'!", src, parent);
             return 1;
         }
     }
@@ -207,12 +232,25 @@ int make_backup(Cson *branch, const char *dest, const char *parent)
             return 1;
         }
         if (backup_init(src, dest_path, parent) == 1){
-            eprintfn("Failed to create backup. Cleaning up..");
-            // TODO: cleanup directory
+            eprintfn("Failed to create backup! Cleaning up..");
+            if (delete_dir(dest_path) == 1){
+                eprintfn("Failed to delete backup!");
+            }
             return 1;
         }
     }
     last_id->value.integer = id;
+
+    // write backup info file
+    Cson *root = cson_map_new();
+    cson_map_insert(root, cson_str("dirs"), dirs);
+    if (parent != NULL){
+        cson_map_insert(root, cson_str("parent"), cson_new_string(cson_str((char*)parent)));
+    } else{
+        cson_map_insert(root, cson_str("parent"), cson_new_null());
+    }
+    cwk_path_join(dest_path, INFO_FILE, dest_name, FILENAME_MAX);
+    cson_write(root, dest_name);
     
     iprintfn("Successfully created backup for branch '%s' at '%s'", branch_name, dest_path);
     return 0;
@@ -223,7 +261,7 @@ int main(void)
     Cson *backups = cson_read(BACKUPS_JSON);
     if (backups == NULL) return 1;
     Cson *branch = cson_array_get(backups, 0);
-    if (make_backup(branch, "d:/testing/new_backups", NULL) == 0){
+    if (make_backup(branch, "d:/testing/new_backups", "d:/testing/new_backups/testing_1") == 0){
         cson_write(backups, BACKUPS_JSON);
     }
     cson_free();

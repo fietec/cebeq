@@ -3,20 +3,39 @@
 #define CSON_WRITE
 #include <cson.h>
 
+#include <dirent.h>
+#include <unistd.h>
+#include <sys/stat.h>
+
+int delete_directory_recursive(const char *path) {
+    struct dirent *entry;
+    DIR *dir = opendir(path);
+    if (!dir) return 0;
+
+    while ((entry = readdir(dir)) != NULL) {
+        char fullPath[PATH_MAX];
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
+
+        struct stat statbuf;
+        if (stat(fullPath, &statbuf) == 0) {
+            if (S_ISDIR(statbuf.st_mode)) {
+                delete_directory_recursive(fullPath);
+            } else {
+                unlink(fullPath);
+            }
+        }
+    }
+
+    closedir(dir);
+    return rmdir(path);
+}
+
 int main(void)
 {
-    char *filename = "d:/cdemeer/programming/c/cebeq/data/full_backups.json";
-    Cson *cson = cson_read(filename);
-    cson_print(cson);
-    Cson *dup = cson_new_cson(cson);
-    cson_print(dup);
-    
-    Cson *n = cson_get(cson, key("u32"), key("created"));
-    cson__to_int(n) = 69;
-    printf("------\n");
-    cson_print(cson);
-    cson_print(dup);
-    
-    cson_free();
+    const char *path = "D:/Testing/new_backups/testing_4";
+    delete_directory_recursive(path);
     return 0;
 }
