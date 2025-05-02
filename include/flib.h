@@ -64,8 +64,10 @@ bool flib_isfile(const char *path);
 bool flib_isdir(const char *path);
 
 bool create_dir(const char *path);
+int flib_delete_dir(const char *path);
 int copy_file(const char *from, const char *to);
 int copy_dir_rec(const char *src, const char *dest);
+int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore_names, size_t ignore_count);
 
 bool flib_get_entry(DIR *dir, const char *path, flib_entry *entry);
 fsize_t flib_dir_size(DIR *dir, const char *path);

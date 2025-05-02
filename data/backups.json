@@ -1,9 +1,21 @@
-[
-    {
+{
+    "content": {
         "last_id": 2,
-        "name": "testing",
         "dirs": [
-            "c:/users/constantijn/desktop" 
+            "c:/users/constantijn/desktop",
+            "d:/cdemeer/geoguessr" 
+        ] 
+    },
+    "testing": {
+        "last_id": 4,
+        "dirs": [
+            "c:/users/constantijn" 
+        ] 
+    },
+    "geoguessr": {
+        "last_id": 3,
+        "dirs": [
+            "d:/cdemeer/geoguessr" 
         ] 
     } 
-]
+}

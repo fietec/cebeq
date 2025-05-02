@@ -31,6 +31,25 @@ bool create_dir(const char *path)
     return true;
 }
 
+int flib_delete_dir(const char *path)
+{
+    DIR *dir = opendir(path);
+    if (dir == NULL){
+        flib_error("Could not find dir '%s'!", path);
+        return 1;
+    }
+    flib_entry entry;
+    while (flib_get_entry(dir, path, &entry)){
+        if (entry.type == FLIB_DIR){
+            delete_dir(entry.path);
+        } else{
+            unlink(entry.path);
+        }
+    }
+    closedir(dir);
+    return rmdir(path);
+}
+
 int copy_file(const char *from, const char *to)
 {
   #ifdef _WIN32
@@ -106,6 +125,41 @@ int copy_dir_rec(const char *src, const char *dest)
     char item_dest_path[FILENAME_MAX] = {0};
     while ((entry = readdir(dir)) != NULL){
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+        cwk_path_join(src, entry->d_name, item_src_path, FILENAME_MAX);
+        cwk_path_join(dest, entry->d_name, item_dest_path, FILENAME_MAX);
+        switch (entry->d_type){
+            case DT_REG:{
+                copy_file(item_src_path, item_dest_path);
+            }break;
+            case DT_DIR:{
+                if (!create_dir(item_dest_path)) continue;
+                copy_dir_rec(item_src_path, item_dest_path);
+            }break;
+            default: break;
+        }
+    }
+    closedir(dir);
+    return 0;
+}
+
+int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore, size_t ignore_count)
+{
+    if (!flib_isdir(dest)){
+        eprintfn("Not a valid directory: '%s'!", dest);
+        return 1;
+    }
+    DIR *dir = opendir(src);
+    if (dir == NULL){
+        eprintfn("Not a valid directory: '%s'!", src);
+        return 1;
+    }
+    struct dirent *entry;
+    char item_src_path[FILENAME_MAX] = {0};
+    char item_dest_path[FILENAME_MAX] = {0};
+    while ((entry = readdir(dir)) != NULL){
+        for (size_t i=0; i<ignore_count; ++i){
+            if (strcmp(entry->d_name, ignore[i]) == 0) continue;
+        }
         cwk_path_join(src, entry->d_name, item_src_path, FILENAME_MAX);
         cwk_path_join(dest, entry->d_name, item_dest_path, FILENAME_MAX);
         switch (entry->d_type){

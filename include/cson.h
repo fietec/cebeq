@@ -210,6 +210,7 @@ struct CsonRegion{
 #define cson_get_float(cson, ...) cson__get_float(cson_get(cson, ##__VA_ARGS__))
 #define cson_get_bool(cson, ...) cson__get_bool(cson_get(cson, ##__VA_ARGS__))
 #define cson_get_string(cson, ...) cson__get_string(cson_get(cson, ##__VA_ARGS__))
+#define cson_get_cstring(cson, ...) cson__get_cstring(cson_get(cson, ##__VA_ARGS__))
 #define cson_get_array(cson, ...) cson__get_array(cson_get(cson, ##__VA_ARGS__))
 #define cson_get_map(cson, ...) cson__get_map(cson_get(cson, ##__VA_ARGS__))
 
@@ -233,6 +234,7 @@ int64_t cson__get_int(Cson *cson);
 double cson__get_float(Cson *cson);
 bool cson__get_bool(Cson *cson);
 CsonStr cson__get_string(Cson *cson);
+char* cson__get_cstring(Cson *cson);
 CsonArray* cson__get_array(Cson *cson);
 CsonMap* cson__get_map(Cson *cson);
 
@@ -277,7 +279,6 @@ uint32_t cson_str_hash(CsonStr str);
 bool cson_str_equals(CsonStr a, CsonStr b);
 size_t cson_str_memsize(CsonStr str);
 
-#ifdef CSON_WRITE
 #define CSON_PRINT_INDENT 4
 #define cson_print(cson) do{if (cson!=NULL){cson_fprint(cson, stdout, 0); putchar('\n');}else{printf("-null-\n");}} while (0)
 #define cson_array_print(array) do{if (array!=NULL){cson_array_fprint(array, stdout, 0); putchar('\n');}else{printf("-null-\n");}}while(0)
@@ -286,9 +287,6 @@ bool cson_write(Cson *json, char *filename);
 void cson_fprint(Cson *value, FILE *file, size_t indent);
 void cson_array_fprint(CsonArray *array, FILE *file, size_t indent);
 void cson_map_fprint(CsonMap *map, FILE *file, size_t indent);
-#endif // CSON_WRITE
-
-#ifdef CSON_PARSE
 
 /* Lexer */
 #define cson_lex_is_whitespace(c) ((c == ' ' || c == '\n' || c == '\t'))
@@ -382,6 +380,5 @@ Cson* cson_read(char *filename);
 bool cson__parse_map(Cson *map, CsonLexer *lexer);
 bool cson__parse_array(Cson *array, CsonLexer *lexer);
 bool cson__parse_value(Cson **cson, CsonLexer *lexer, CsonToken *token);
-#endif // CSON_PARSE
 
 #endif // _CSON_H

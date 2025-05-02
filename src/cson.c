@@ -1,5 +1,3 @@
-#define CSON_WRITE
-#define CSON_PARSE
 #include <cson.h>
 
 Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
@@ -105,6 +103,10 @@ Cson* cson_new_string(CsonStr value)
 
 Cson* cson_new_cstring(char *cstr)
 {
+    if (cstr == NULL){
+        cson_error(CsonError_InvalidParam, "String may not be null!");
+        return NULL;
+    }
     Cson *cson = cson_alloc(cson_current_arena, sizeof(*cson));
     cson_assert_alloc(cson);
     cson->type = Cson_String;
@@ -205,6 +207,21 @@ CsonStr cson__get_string(Cson *cson) {
         return (CsonStr){0};
     }
     return cson->value.string;
+}
+
+char* cson__get_cstring(Cson *cson){
+    if (cson == NULL) {
+        cson_error(CsonError_InvalidParam, "Cannot extract %s from null pointer!", CsonTypeStrings[Cson_String]);
+        return NULL;
+    }
+    if (cson->type == Cson_Null){
+        return NULL;
+    }
+    if (cson->type != Cson_String) {
+        cson_error(CsonError_InvalidType, "Cannot convert %s to %s!", CsonTypeStrings[cson->type], CsonTypeStrings[Cson_String]);
+        return NULL;
+    }
+    return cson->value.string.value;
 }
 
 CsonArray* cson__get_array(Cson *cson) {
@@ -636,8 +653,6 @@ size_t cson_str_memsize(CsonStr string)
     return total;
 }
 
-#ifdef CSON_WRITE
-
 #define cson_print_indent(file, indent) (fprintf((file), "%*s", (indent)*CSON_PRINT_INDENT, ""))
 
 void cson_fprint(Cson *value, FILE *file, size_t indent)
@@ -714,10 +729,6 @@ bool cson_write(Cson *json, char *filename)
     fclose(file);
     return true;
 }
-
-#endif // CSON_WRITE
-
-#ifdef CSON_PARSE
 
 CsonLexer cson_lex_init(char *buffer, size_t buffer_size, char *filename)
 {
@@ -1107,4 +1118,3 @@ Cson* cson_read(char *filename){
     free(file_content);
     return cson;
 }
-#endif // CSON_PARSE
