@@ -41,7 +41,7 @@ int flib_delete_dir(const char *path)
     flib_entry entry;
     while (flib_get_entry(dir, path, &entry)){
         if (entry.type == FLIB_DIR){
-            delete_dir(entry.path);
+            flib_delete_dir(entry.path);
         } else{
             unlink(entry.path);
         }
