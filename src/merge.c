@@ -21,11 +21,6 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
     
     int value = 0;
     
-    CsonArena arena = {0};
-    CsonArena *prev_arena = cson_current_arena;
-    cson_swap_arena(&arena);
-    
-    
     char info_path[FILENAME_MAX] = {0};
     cwk_path_join(src, INFO_FILE, info_path, FILENAME_MAX);
     Cson *info = cson_read(info_path);
@@ -86,7 +81,6 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
     }
     
   defer:
-    cson_swap_and_free_arena(prev_arena);
     closedir(dir);
     return value;
 }

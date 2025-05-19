@@ -14,10 +14,6 @@ bool path_in_backup(const char *path, const char *backup)
     char info_path[FILENAME_MAX] = {0};
     cwk_path_join(backup, INFO_FILE, info_path, FILENAME_MAX);
     
-    CsonArena arena = {0};
-    CsonArena *prev_arena = cson_current_arena;
-    cson_swap_arena(&arena);
-    
     Cson *info = cson_read(info_path);
     if (info == NULL){
         eprintfn("Could not find backup file '%s'!", info_path);
@@ -34,7 +30,6 @@ bool path_in_backup(const char *path, const char *backup)
     }
     return_defer(false);
   defer:
-    cson_swap_and_free_arena(prev_arena);
     return value;
 }
 
@@ -56,9 +51,6 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
         closedir(dir);
         return 1;
     }
-    CsonArena arena = {0};
-    CsonArena *prev_arena = cson_current_arena;
-    cson_swap_arena(&arena);
     
     Cson *prev_files = NULL;
     Cson *prev_dirs = NULL;
@@ -156,7 +148,6 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
     if (!cson_write(root, item_dest_path)) return_defer(1);
     
   defer:
-    cson_swap_and_free_arena(prev_arena);
     closedir(dir);
     return value;
 }
@@ -244,7 +235,6 @@ int make_backup(const char *branch_name, const char *dest, const char *parent)
         }
     }
     last_id->value.integer = id;
-
     // write backup info file
     Cson *root = cson_map_new();
     cson_map_insert(root, cson_str("dirs"), dirs);
