@@ -1,9 +1,15 @@
-#ifndef _SYNCIT_H
-#define _SYNCIT_H
+#ifndef _CEBEQ_H
+#define _CEBEQ_H
 
 #include <stdio.h>
 #include <inttypes.h>
 #include <assert.h>
+
+#ifdef _WIN32
+    #define CBQLIB __declspec(dllexport)
+#else
+    #define CBQLIB
+#endif // _WIN32
 
 #define PROGRAM_NAME "cebeq"
 
@@ -27,7 +33,7 @@
 
 #define UNREACHABLE(...) (eprintfn(__VA_ARGS__), assert(0))
 
-int make_backup(const char *branch_name, const char *dest, const char *parent);
-int merge(const char *src, const char *dest);
+CBQLIB int make_backup(const char *branch_name, const char *dest, const char *parent);
+CBQLIB int merge(const char *src, const char *dest);
 
-#endif // _SYNCIT_H
+#endif // _CEBEQ_H

@@ -21,15 +21,29 @@ void append_head(Nob_Cmd *cmd)
 
 void build_lib(Nob_Cmd *cmd)
 {
-    assert(0 && "Lib Unimplemented!");
-}
+    nob_log(NOB_INFO, "Building core library..");
+    
+    // Build core.o
+    append_head(cmd);
+    nob_cmd_append(cmd, "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c");
+#ifdef _WIN32
+    nob_cmd_append(cmd, "-shared", "-o", "build/core.dll");
+#else
+    nob_cmd_append(cmd, "-fPIC", "-shared", "-o", "build/libcore.so");
+#endif // _WIN32
+    nob_cmd_run_sync_and_reset(cmd);
+}   
 
 void build_cli(Nob_Cmd *cmd)
 {
+    build_lib(cmd);
     nob_log(NOB_INFO, "Building cli..");
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/cli");
-    nob_cmd_append(cmd, "src/cli.c", "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c");
+    nob_cmd_append(cmd, "src/cli.c", "-Lbuild", "-lcore");
+#ifndef _WIN32
+    nob_cmd_append(cmd, "-Wl,rpath=build");
+#endif // _WIN32
     nob_cmd_run_sync_and_reset(cmd);
 }
 
@@ -38,7 +52,10 @@ void build_gui(Nob_Cmd *cmd)
     nob_log(NOB_INFO, "Building gui..");
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/gui");
-    nob_cmd_append(cmd, "src/gui.c", "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c");
+    nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore");
+#ifndef _WIN32
+    nob_cmd_append(cmd, "-Wl,rpath=build");
+#endif // _WIN32
     nob_cmd_run_sync_and_reset(cmd);
 }
 
@@ -53,7 +70,7 @@ void build_test(Nob_Cmd *cmd)
 
 void build_all(Nob_Cmd *cmd)
 {
-    // TODO: add gui and lib targets
+    // TODO: add gui target
     build_cli(cmd);
 }
 
