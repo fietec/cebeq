@@ -215,7 +215,7 @@ int make_backup(const char *branch_name, const char *dest, const char *parent)
     
     char dest_name[FILENAME_MAX] = {0};
     char dest_path[FILENAME_MAX] = {0};
-    snprintf(dest_name, FILENAME_MAX, "%s_%lld", branch_name, id);
+    snprintf(dest_name, FILENAME_MAX, "%s_%ld", branch_name, id);
     cwk_path_join(dest, dest_name, dest_path, FILENAME_MAX);
     
     if (!create_dir(dest_path)) return_defer(1);

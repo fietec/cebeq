@@ -16,7 +16,7 @@ void print_usage(const char *program_name)
 void append_head(Nob_Cmd *cmd)
 {
     nob_cmd_append(cmd, "gcc", "-I", "./include");
-    nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value"); // definetly not cheating here..    
+    nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow"); // definetly not cheating here..    
 }
 
 void build_lib(Nob_Cmd *cmd)
@@ -36,13 +36,12 @@ void build_lib(Nob_Cmd *cmd)
 
 void build_cli(Nob_Cmd *cmd)
 {
-    build_lib(cmd);
     nob_log(NOB_INFO, "Building cli..");
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/cli");
     nob_cmd_append(cmd, "src/cli.c", "-Lbuild", "-lcore");
 #ifndef _WIN32
-    nob_cmd_append(cmd, "-Wl,rpath=build");
+    nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
     nob_cmd_run_sync_and_reset(cmd);
 }
@@ -54,7 +53,7 @@ void build_gui(Nob_Cmd *cmd)
     nob_cmd_append(cmd, "-o", "build/gui");
     nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore");
 #ifndef _WIN32
-    nob_cmd_append(cmd, "-Wl,rpath=build");
+    nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
     nob_cmd_run_sync_and_reset(cmd);
 }
@@ -71,6 +70,7 @@ void build_test(Nob_Cmd *cmd)
 void build_all(Nob_Cmd *cmd)
 {
     // TODO: add gui target
+    build_lib(cmd);
     build_cli(cmd);
 }
 

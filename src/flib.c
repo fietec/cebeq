@@ -24,7 +24,11 @@ bool flib_read(const char *path, flib_cont *fc)
 
 bool create_dir(const char *path)
 {
+  #ifdef _WIN32
     if (mkdir(path) == -1){
+  #else
+	if (mkdir(path, 0700) == -1){
+  #endif // _WIN32
         eprintfn("Could not create directory '%s': %s!", path, strerror(errno));
         return false;
     }

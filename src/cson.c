@@ -17,7 +17,7 @@ Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
         else if (arg.type == CsonArg_Index && next->type == Cson_Array){
             next = cson_array_get(next, arg.value.index);
             if (next == NULL){
-                cson_error(CsonError_IndexError, "Index out of bounds for array of size %u: %u", cson_len(next), arg.value.index);
+                cson_error(CsonError_IndexError, "Index out of bounds for array of size %zu: %zu", cson_len(next), arg.value.index);
                 return NULL;
             }
             continue;
@@ -530,7 +530,7 @@ void* cson_alloc(CsonArena *arena, size_t size)
     }
     CsonRegion *last = arena->last;
     if (last->size + all_size > last->capacity){
-        cson_assert(arena->last == NULL, "Invalid arena state!: size:%u, capacity:%u, next:%p", last->size, last->capacity, last->next);
+        cson_assert(arena->last == NULL, "Invalid arena state!: size:%zu, capacity:%zu, next:%p", last->size, last->capacity, last->next);
         size_t capacity = (all_size > default_capacity)? all_size:default_capacity;
         last->next = cson__new_region(capacity);
         arena->last = last->next;
@@ -653,7 +653,7 @@ size_t cson_str_memsize(CsonStr string)
     return total;
 }
 
-#define cson_print_indent(file, indent) (fprintf((file), "%*s", (indent)*CSON_PRINT_INDENT, ""))
+#define cson_print_indent(file, indent) (fprintf((file), "%*s", (int)(indent)*CSON_PRINT_INDENT, ""))
 
 void cson_fprint(Cson *value, FILE *file, size_t indent)
 {
@@ -815,7 +815,7 @@ bool cson_lex_next(CsonLexer *lexer, CsonToken *token)
                 cson_lex_set_token(token, CsonToken_Float, t_start, t_end, t_loc);
                 return true;
             }
-            cson_error(CsonError_InvalidType, "Invalid literal \"%.*s\" at "CSON_LOC_FMT, t_len, t_start, cson_loc_expand(t_loc));
+            cson_error(CsonError_InvalidType, "Invalid literal \"%.*s\" at "CSON_LOC_FMT, (int)t_len, t_start, cson_loc_expand(t_loc));
             cson_lex_set_token(token, CsonToken_Invalid, t_start, t_end, t_loc);
             return false;
         }
@@ -870,17 +870,17 @@ bool cson_lex_extract(CsonToken *token, char *buffer, size_t buffer_size)
             r++;
             w++;
         }
-        sprintf(buffer, "%.*s", w-temp_buffer+1, temp_buffer);
+        sprintf(buffer, "%.*s", (int) (w-temp_buffer+1), temp_buffer);
     }
     else{
-        sprintf(buffer, "%.*s", token->len, token->t_start);
+        sprintf(buffer, "%.*s", (int)token->len, token->t_start);
     }
     return true;
 }
 
 void cson_lex_print(CsonToken token)
 {
-    cson_info(CSON_LOC_FMT": %s: '%.*s'\n", cson_loc_expand(token.loc), CsonTokenTypeNames[token.type], token.t_end-token.t_start, token.t_start);
+    cson_info(CSON_LOC_FMT": %s: '%.*s'\n", cson_loc_expand(token.loc), CsonTokenTypeNames[token.type], (int)(token.t_end-token.t_start), token.t_start);
 }
 
 void cson_lex_set_token(CsonToken *token, CsonTokenType type, char *t_start, char *t_end, CsonLoc loc)
@@ -951,7 +951,7 @@ bool cson_lex_is_float(char *s, char *e)
 void cson__error_unexpected(CsonLoc loc, CsonTokenType expected[], size_t expected_count, CsonTokenType actual, char *filename, size_t line)
 {
     if (expected_count == 0) return;
-    fprintf(stderr, "%s%s:%d [ERROR] (%s): Expected [", cson_ansi_rgb(196, 0, 0), filename, line, CsonErrorStrings[CsonError_UnexpectedToken]);
+    fprintf(stderr, "%s%s:%zu [ERROR] (%s): Expected [", cson_ansi_rgb(196, 0, 0), filename, line, CsonErrorStrings[CsonError_UnexpectedToken]);
     size_t i;
     for (i=0; i<expected_count-1; ++i){
         fprintf(stderr, "%s, ", CsonTokenTypeNames[expected[i]]);
