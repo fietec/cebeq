@@ -297,7 +297,7 @@ void cson_map_fprint(CsonMap *map, FILE *file, size_t indent);
 #define cson_loc_expand(loc) (loc).filename, (loc).row, (loc).column
 #define cson_token_args_array(...) (CsonTokenType[]){__VA_ARGS__}, cson_args_len(__VA_ARGS__)
 
-#define CSON_LOC_FMT "%s:%zu:%zu"
+#define CSON_LOC_FMT "%s:%u:%u"
 
 typedef enum{
     CsonToken_MapOpen,

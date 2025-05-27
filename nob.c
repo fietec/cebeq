@@ -1,3 +1,5 @@
+#include <string.h>
+
 #define NOB_IMPLEMENTATION
 #include "nob.h"
 
@@ -11,6 +13,9 @@ void print_usage(const char *program_name)
     printf("  - lib        Build the core functionality lib\n");
     printf("  - all        Build the all the above\n");
     printf("  - test       Build the current test\n\n");
+    
+    printf("Other:\n");
+    printf("  - help       Print this dialog\n\n");
 }
 
 void append_head(Nob_Cmd *cmd)
@@ -75,6 +80,7 @@ void build_all(Nob_Cmd *cmd)
 }
 
 int main(int argc, char **argv)
+
 {
     NOB_GO_REBUILD_URSELF(argc, argv);
     if (!nob_mkdir_if_not_exists("build")){
@@ -90,7 +96,7 @@ int main(int argc, char **argv)
         else if (strcmp(target, "lib") == 0) build_lib(&cmd);
         else if (strcmp(target, "all") == 0) build_all(&cmd);
         else if (strcmp(target, "test") == 0) build_test(&cmd);
-        else if (strcmp(target, "--help") == 0) print_usage(program_name);
+        else if (strcmp(target, "help") == 0) print_usage(program_name);
         else{
             fprintf(stderr, "[ERROR] Unknown target: '%s'!\n", target);
             return 1;

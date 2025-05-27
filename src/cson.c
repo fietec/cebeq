@@ -17,7 +17,7 @@ Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
         else if (arg.type == CsonArg_Index && next->type == Cson_Array){
             next = cson_array_get(next, arg.value.index);
             if (next == NULL){
-                cson_error(CsonError_IndexError, "Index out of bounds for array of size %zu: %zu", cson_len(next), arg.value.index);
+                cson_error(CsonError_IndexError, "Index out of bounds for array of size %u: %u", cson_len(next), arg.value.index);
                 return NULL;
             }
             continue;
@@ -530,7 +530,7 @@ void* cson_alloc(CsonArena *arena, size_t size)
     }
     CsonRegion *last = arena->last;
     if (last->size + all_size > last->capacity){
-        cson_assert(arena->last == NULL, "Invalid arena state!: size:%zu, capacity:%zu, next:%p", last->size, last->capacity, last->next);
+        cson_assert(arena->last == NULL, "Invalid arena state!: size:%u, capacity:%u, next:%p", last->size, last->capacity, last->next);
         size_t capacity = (all_size > default_capacity)? all_size:default_capacity;
         last->next = cson__new_region(capacity);
         arena->last = last->next;
@@ -951,7 +951,7 @@ bool cson_lex_is_float(char *s, char *e)
 void cson__error_unexpected(CsonLoc loc, CsonTokenType expected[], size_t expected_count, CsonTokenType actual, char *filename, size_t line)
 {
     if (expected_count == 0) return;
-    fprintf(stderr, "%s%s:%zu [ERROR] (%s): Expected [", cson_ansi_rgb(196, 0, 0), filename, line, CsonErrorStrings[CsonError_UnexpectedToken]);
+    fprintf(stderr, "%s%s:%u [ERROR] (%s): Expected [", cson_ansi_rgb(196, 0, 0), filename, line, CsonErrorStrings[CsonError_UnexpectedToken]);
     size_t i;
     for (i=0; i<expected_count-1; ++i){
         fprintf(stderr, "%s, ", CsonTokenTypeNames[expected[i]]);
