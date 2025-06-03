@@ -25,13 +25,13 @@ char* _shift_args(int *argc, char ***argv)
 void print_usage(const char *program_name) {
     printf("Usage: %s [OPTIONS] <command> [COMMAND_OPTIONS]\n\n", program_name);
 
-    printf("Options:\n");
-    printf("  -h, --help          Show this help message\n");
-    printf("  -v, --version       Show program version\n\n");
-
     printf("Commands:\n");
     printf("  backup              Create a backup\n");
     printf("  merge               Merge existing backups\n\n");
+    
+    printf("Options:\n");
+    printf("  -h, --help          Show this help message\n");
+    printf("  -v, --version       Show program version\n\n");
 
     printf("Use '%s <command> --help' to see options for a specific command.\n", program_name);
 }
@@ -46,6 +46,7 @@ void print_backup_usage(const char *program_name)
     printf("  parent              The parent backup\n\n");
     
     printf("Options for backup:\n");
+    printf("  -l, --list          List all available branches\n");
     printf("  -h, --help          Show this help message\n");
 }
 
@@ -61,9 +62,40 @@ void print_merge_usage(const char *program_name)
     printf("  -h, --help          Show this help message\n");
 }
 
+int print_branches(Cson *branches)
+{
+    Cson *branch_names = cson_map_keys(branches);
+    if (!cson_is_array(branch_names)){
+        fprintf(stderr, "[ERROR] Could not extract branch_names!\n");
+        return 1;
+    }
+    size_t len = cson_len(branch_names);
+    printf("Currently, there are %u branches:\n", len);
+    for (size_t i=0; i<len; ++i){
+        CsonStr key = cson_get_string(branch_names, index(i));
+        Cson *dirs = cson_get(branches, key(key.value), key("dirs"));
+        if (!cson_is_array(dirs)){
+            fprintf(stderr, "[ERROR] Could not find dirs for key '%s'!\n", key.value);
+            return 1;
+        }
+        printf("  '%s' : [", key.value);
+        for (size_t i=0; i<cson_len(dirs); ++i){
+            CsonStr dir = cson_get_string(dirs, index(i));
+            printf("%s\"%s\"", i>0? ", ": "", dir.value);
+        }
+        printf("]\n");
+    }
+    return 0;
+}
+
 void print_version(const char *program_name)
 {
     printf("%s - version %s\n\b", program_name, version);
+}
+
+int run_backup(const char *args[])
+{
+    return make_backup(args[0], args[1], args[2]);
 }
 
 int main(int argc, char **argv)
@@ -129,6 +161,14 @@ int main(int argc, char **argv)
                     print_backup_usage(program_name);
                     return 0;
                 }
+                else if (strcmp(arg, "--list") == 0 || strcmp(arg, "-l") == 0){
+                    Cson *branches = cson_get(info, key("backups"));
+                    if (!cson_is_map(branches)){
+                        fprintf(stderr, "[ERROR] Invalid info file state!\n");
+                        return 1;
+                    }
+                    return print_branches(branches);
+                }
                 else{
                     if (command_option_count >= 3){
                         fprintf(stderr, "[ERROR] Unknown argument: '%s'!\n\n", arg);
@@ -158,19 +198,15 @@ int main(int argc, char **argv)
     switch (current_command){
         case Cmd_Backup: {
             if (command_option_count < 2){
-                fprintf(stderr, "[ERROR] To few arguments provided!\n\n");
+                fprintf(stderr, "[ERROR] Too few arguments provided!\n\n");
                 print_backup_usage(program_name);
                 return 1;
             }
-            printf("Arguments: ");
-            for (size_t i=0; i<command_option_count; ++i){
-                printf("'%s' ", command_options[i]);
-            }
-            printf("\nTODO: implement 'make_backup' call\n\n");
+            return run_backup(command_options);
         }break;
         case Cmd_Merge:{
             if (command_option_count < 2){
-                fprintf(stderr, "[ERROR] To few arguments provided!\n\n");
+                fprintf(stderr, "[ERROR] Too few arguments provided!\n\n");
                 print_merge_usage(program_name);
                 return 1;
             }
