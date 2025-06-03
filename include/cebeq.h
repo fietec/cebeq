@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #ifdef _WIN32
     #define CBQLIB __declspec(dllexport)
@@ -35,5 +36,9 @@
 
 CBQLIB int make_backup(const char *branch_name, const char *dest, const char *parent);
 CBQLIB int merge(const char *src, const char *dest);
+
+CBQLIB bool get_exe_path(char *buffer, size_t buffer_size);
+CBQLIB bool get_parent_dir(const char *path, char *buffer, size_t buffer_size);
+CBQLIB void norm_path(const char *path, char *buffer, size_t buffer_size); // cwk_path_normalize but with unix-style seperators forced
 
 #endif // _CEBEQ_H

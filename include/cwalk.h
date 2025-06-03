@@ -18,27 +18,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-
-#if defined(_WIN32) || defined(__CYGWIN__)
-#define CWK_EXPORT __declspec(dllexport)
-#define CWK_IMPORT __declspec(dllimport)
-#elif __GNUC__ >= 4
-#define CWK_EXPORT __attribute__((visibility("default")))
-#define CWK_IMPORT __attribute__((visibility("default")))
-#else
-#define CWK_EXPORT
-#define CWK_IMPORT
-#endif
-
-#if defined(CWK_SHARED)
-#if defined(CWK_EXPORTS)
-#define CWK_PUBLIC CWK_EXPORT
-#else
-#define CWK_PUBLIC CWK_IMPORT
-#endif
-#else
-#define CWK_PUBLIC
-#endif
+#include <cebeq.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -103,7 +83,7 @@ enum cwk_path_style
  * @param buffer_size The size of the result buffer.
  * @return Returns the total amount of characters of the new absolute path.
  */
-CWK_PUBLIC size_t cwk_path_get_absolute(const char *base, const char *path,
+CBQLIB size_t cwk_path_get_absolute(const char *base, const char *path,
   char *buffer, size_t buffer_size);
 
 /**
@@ -124,7 +104,7 @@ CWK_PUBLIC size_t cwk_path_get_absolute(const char *base, const char *path,
  * @param buffer_size The size of the result buffer.
  * @return Returns the total amount of characters of the full path.
  */
-CWK_PUBLIC size_t cwk_path_get_relative(const char *base_directory,
+CBQLIB size_t cwk_path_get_relative(const char *base_directory,
   const char *path, char *buffer, size_t buffer_size);
 
 /**
@@ -145,7 +125,7 @@ CWK_PUBLIC size_t cwk_path_get_relative(const char *base_directory,
  * @param buffer_size The size of the result buffer.
  * @return Returns the total amount of characters of the full, combined path.
  */
-CWK_PUBLIC size_t cwk_path_join(const char *path_a, const char *path_b,
+CBQLIB size_t cwk_path_join(const char *path_a, const char *path_b,
   char *buffer, size_t buffer_size);
 
 /**
@@ -166,7 +146,7 @@ CWK_PUBLIC size_t cwk_path_join(const char *path_a, const char *path_b,
  * @param buffer_size The size of the result buffer.
  * @return Returns the total amount of characters of the full, combined path.
  */
-CWK_PUBLIC size_t cwk_path_join_multiple(const char **paths, char *buffer,
+CBQLIB size_t cwk_path_join_multiple(const char **paths, char *buffer,
   size_t buffer_size);
 
 /**
@@ -179,7 +159,7 @@ CWK_PUBLIC size_t cwk_path_join_multiple(const char **paths, char *buffer,
  * @param path The path which will be inspected.
  * @param length The output of the root length.
  */
-CWK_PUBLIC void cwk_path_get_root(const char *path, size_t *length);
+CBQLIB void cwk_path_get_root(const char *path, size_t *length);
 
 /**
  * @brief Changes the root of a path.
@@ -198,7 +178,7 @@ CWK_PUBLIC void cwk_path_get_root(const char *path, size_t *length);
  * written to.
  * @return Returns the total amount of characters of the new path.
  */
-CWK_PUBLIC size_t cwk_path_change_root(const char *path, const char *new_root,
+CBQLIB size_t cwk_path_change_root(const char *path, const char *new_root,
   char *buffer, size_t buffer_size);
 
 /**
@@ -210,7 +190,7 @@ CWK_PUBLIC size_t cwk_path_change_root(const char *path, const char *new_root,
  * @param path The path which will be checked.
  * @return Returns true if the path is absolute or false otherwise.
  */
-CWK_PUBLIC bool cwk_path_is_absolute(const char *path);
+CBQLIB bool cwk_path_is_absolute(const char *path);
 
 /**
  * @brief Determine whether the path is relative or not.
@@ -221,7 +201,7 @@ CWK_PUBLIC bool cwk_path_is_absolute(const char *path);
  * @param path The path which will be checked.
  * @return Returns true if the path is relative or false otherwise.
  */
-CWK_PUBLIC bool cwk_path_is_relative(const char *path);
+CBQLIB bool cwk_path_is_relative(const char *path);
 
 /**
  * @brief Gets the basename of a file path.
@@ -238,7 +218,7 @@ CWK_PUBLIC bool cwk_path_is_relative(const char *path);
  * @param length The output of the length of the basename. This may be
  * null if not required.
  */
-CWK_PUBLIC void cwk_path_get_basename(const char *path, const char **basename,
+CBQLIB void cwk_path_get_basename(const char *path, const char **basename,
   size_t *length);
 
 /**
@@ -259,7 +239,7 @@ CWK_PUBLIC void cwk_path_get_basename(const char *path, const char **basename,
  * @return Returns the size which the complete new path would have if it was
  * not truncated.
  */
-CWK_PUBLIC size_t cwk_path_change_basename(const char *path,
+CBQLIB size_t cwk_path_change_basename(const char *path,
   const char *new_basename, char *buffer, size_t buffer_size);
 
 /**
@@ -273,7 +253,7 @@ CWK_PUBLIC size_t cwk_path_change_basename(const char *path,
  * @param path The path which will be inspected.
  * @param length The length of the dirname.
  */
-CWK_PUBLIC void cwk_path_get_dirname(const char *path, size_t *length);
+CBQLIB void cwk_path_get_dirname(const char *path, size_t *length);
 
 /**
  * @brief Gets the extension of a file path.
@@ -290,7 +270,7 @@ CWK_PUBLIC void cwk_path_get_dirname(const char *path, size_t *length);
  * @param length The output of the length of the extension.
  * @return Returns true if an extension is found or false otherwise.
  */
-CWK_PUBLIC bool cwk_path_get_extension(const char *path, const char **extension,
+CBQLIB bool cwk_path_get_extension(const char *path, const char **extension,
   size_t *length);
 
 /**
@@ -302,7 +282,7 @@ CWK_PUBLIC bool cwk_path_get_extension(const char *path, const char **extension,
  * @param path The path which will be inspected.
  * @return Returns true if the path has an extension or false otherwise.
  */
-CWK_PUBLIC bool cwk_path_has_extension(const char *path);
+CBQLIB bool cwk_path_has_extension(const char *path);
 
 /**
  * @brief Changes the extension of a file path.
@@ -325,7 +305,7 @@ CWK_PUBLIC bool cwk_path_has_extension(const char *path);
  * @return Returns the total size which the output would have if it was not
  * truncated.
  */
-CWK_PUBLIC size_t cwk_path_change_extension(const char *path,
+CBQLIB size_t cwk_path_change_extension(const char *path,
   const char *new_extension, char *buffer, size_t buffer_size);
 
 /**
@@ -351,7 +331,7 @@ CWK_PUBLIC size_t cwk_path_change_extension(const char *path,
  * @return The size which the complete normalized path has if it was not
  * truncated.
  */
-CWK_PUBLIC size_t cwk_path_normalize(const char *path, char *buffer,
+CBQLIB size_t cwk_path_normalize(const char *path, char *buffer,
   size_t buffer_size);
 
 /**
@@ -365,7 +345,7 @@ CWK_PUBLIC size_t cwk_path_normalize(const char *path, char *buffer,
  * @param path_other The other path which will compared with the base path.
  * @return Returns the number of characters which are common in the base path.
  */
-CWK_PUBLIC size_t cwk_path_get_intersection(const char *path_base,
+CBQLIB size_t cwk_path_get_intersection(const char *path_base,
   const char *path_other);
 
 /**
@@ -379,7 +359,7 @@ CWK_PUBLIC size_t cwk_path_get_intersection(const char *path_base,
  * @param segment The segment which will be extracted.
  * @return Returns true if there is a segment or false if there is none.
  */
-CWK_PUBLIC bool cwk_path_get_first_segment(const char *path,
+CBQLIB bool cwk_path_get_first_segment(const char *path,
   struct cwk_segment *segment);
 
 /**
@@ -395,7 +375,7 @@ CWK_PUBLIC bool cwk_path_get_first_segment(const char *path,
  * @param segment The segment which will be extracted.
  * @return Returns true if there is a segment or false if there is none.
  */
-CWK_PUBLIC bool cwk_path_get_last_segment(const char *path,
+CBQLIB bool cwk_path_get_last_segment(const char *path,
   struct cwk_segment *segment);
 
 /**
@@ -408,7 +388,7 @@ CWK_PUBLIC bool cwk_path_get_last_segment(const char *path,
  * @param segment The current segment which will be advanced to the next one.
  * @return Returns true if another segment was found or false otherwise.
  */
-CWK_PUBLIC bool cwk_path_get_next_segment(struct cwk_segment *segment);
+CBQLIB bool cwk_path_get_next_segment(struct cwk_segment *segment);
 
 /**
  * @brief Moves to the previous segment.
@@ -421,7 +401,7 @@ CWK_PUBLIC bool cwk_path_get_next_segment(struct cwk_segment *segment);
  * @return Returns true if there is a segment before this one or false
  * otherwise.
  */
-CWK_PUBLIC bool cwk_path_get_previous_segment(struct cwk_segment *segment);
+CBQLIB bool cwk_path_get_previous_segment(struct cwk_segment *segment);
 
 /**
  * @brief Gets the type of the submitted path segment.
@@ -434,7 +414,7 @@ CWK_PUBLIC bool cwk_path_get_previous_segment(struct cwk_segment *segment);
  * @param segment The segment which will be inspected.
  * @return Returns the type of the segment.
  */
-CWK_PUBLIC enum cwk_segment_type cwk_path_get_segment_type(
+CBQLIB enum cwk_segment_type cwk_path_get_segment_type(
   const struct cwk_segment *segment);
 
 /**
@@ -454,7 +434,7 @@ CWK_PUBLIC enum cwk_segment_type cwk_path_get_segment_type(
  * @return Returns the total size which would have been written if the output
  * was not truncated.
  */
-CWK_PUBLIC size_t cwk_path_change_segment(struct cwk_segment *segment,
+CBQLIB size_t cwk_path_change_segment(struct cwk_segment *segment,
   const char *value, char *buffer, size_t buffer_size);
 
 /**
@@ -468,7 +448,7 @@ CWK_PUBLIC size_t cwk_path_change_segment(struct cwk_segment *segment,
  * @param str A pointer to a string.
  * @return Returns true if it is a separator, or false otherwise.
  */
-CWK_PUBLIC bool cwk_path_is_separator(const char *str);
+CBQLIB bool cwk_path_is_separator(const char *str);
 
 /**
  * @brief Guesses the path style.
@@ -480,7 +460,7 @@ CWK_PUBLIC bool cwk_path_is_separator(const char *str);
  * @param path The path which will be inspected.
  * @return Returns the style which is most likely used for the path.
  */
-CWK_PUBLIC enum cwk_path_style cwk_path_guess_style(const char *path);
+CBQLIB enum cwk_path_style cwk_path_guess_style(const char *path);
 
 /**
  * @brief Configures which path style is used.
@@ -493,7 +473,7 @@ CWK_PUBLIC enum cwk_path_style cwk_path_guess_style(const char *path);
  *
  * @param style The style which will be used from now on.
  */
-CWK_PUBLIC void cwk_path_set_style(enum cwk_path_style style);
+CBQLIB void cwk_path_set_style(enum cwk_path_style style);
 
 /**
  * @brief Gets the path style configuration.
@@ -503,7 +483,7 @@ CWK_PUBLIC void cwk_path_set_style(enum cwk_path_style style);
  *
  * @return Returns the current path style configuration.
  */
-CWK_PUBLIC enum cwk_path_style cwk_path_get_style(void);
+CBQLIB enum cwk_path_style cwk_path_get_style(void);
 
 #ifdef __cplusplus
 } // extern "C"

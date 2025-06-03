@@ -35,6 +35,8 @@
 #include <ctype.h>
 #include <sys/stat.h>
 
+#include <cebeq.h>
+
 #define CSON_DEF_ARRAY_CAPACITY   16
 #define CSON_ARRAY_MUL_F           2
 #define CSON_MAP_CAPACITY         16
@@ -214,79 +216,79 @@ struct CsonRegion{
 #define cson_get_array(cson, ...) cson__get_array(cson_get(cson, ##__VA_ARGS__))
 #define cson_get_map(cson, ...) cson__get_map(cson_get(cson, ##__VA_ARGS__))
 
-Cson* cson__get(Cson *cson, CsonArg args[], size_t count);
+CBQLIB Cson* cson__get(Cson *cson, CsonArg args[], size_t count);
 
-Cson* cson_new(void);
-Cson* cson_new_int(int32_t value);
-Cson* cson_new_float(double value);
-Cson* cson_new_bool(bool value);
-Cson* cson_new_string(CsonStr value);
-Cson* cson_new_cstring(char *cstr);
-Cson* cson_new_array(CsonArray *value);
-Cson* cson_new_map(CsonMap *value);
-Cson* cson_new_cson(Cson *cson);
-Cson* cson_new_null();
+CBQLIB Cson* cson_new(void);
+CBQLIB Cson* cson_new_int(int32_t value);
+CBQLIB Cson* cson_new_float(double value);
+CBQLIB Cson* cson_new_bool(bool value);
+CBQLIB Cson* cson_new_string(CsonStr value);
+CBQLIB Cson* cson_new_cstring(char *cstr);
+CBQLIB Cson* cson_new_array(CsonArray *value);
+CBQLIB Cson* cson_new_map(CsonMap *value);
+CBQLIB Cson* cson_new_cson(Cson *cson);
+CBQLIB Cson* cson_new_null();
 
-size_t cson_len(Cson *cson);
-size_t cson_memsize(Cson *cson);
+CBQLIB size_t cson_len(Cson *cson);
+CBQLIB size_t cson_memsize(Cson *cson);
 
-int64_t cson__get_int(Cson *cson);
-double cson__get_float(Cson *cson);
-bool cson__get_bool(Cson *cson);
-CsonStr cson__get_string(Cson *cson);
-char* cson__get_cstring(Cson *cson);
-CsonArray* cson__get_array(Cson *cson);
-CsonMap* cson__get_map(Cson *cson);
+CBQLIB int64_t cson__get_int(Cson *cson);
+CBQLIB double cson__get_float(Cson *cson);
+CBQLIB bool cson__get_bool(Cson *cson);
+CBQLIB CsonStr cson__get_string(Cson *cson);
+CBQLIB char* cson__get_cstring(Cson *cson);
+CBQLIB CsonArray* cson__get_array(Cson *cson);
+CBQLIB CsonMap* cson__get_map(Cson *cson);
 
-bool cson_is_int(Cson *cson);
-bool cson_is_float(Cson *cson);
-bool cson_is_bool(Cson *cson);
-bool cson_is_string(Cson *cson);
-bool cson_is_array(Cson *cson);
-bool cson_is_map(Cson *cson);
-bool cson_is_null(Cson *cson);
+CBQLIB bool cson_is_int(Cson *cson);
+CBQLIB bool cson_is_float(Cson *cson);
+CBQLIB bool cson_is_bool(Cson *cson);
+CBQLIB bool cson_is_string(Cson *cson);
+CBQLIB bool cson_is_array(Cson *cson);
+CBQLIB bool cson_is_map(Cson *cson);
+CBQLIB bool cson_is_null(Cson *cson);
 
-Cson* cson_array_new(void);
-CsonError cson_array_push(Cson *array, Cson *value);
-CsonError cson_array_pop(Cson *array, size_t index);
-Cson* cson_array_get(Cson *array, size_t index);
-Cson* cson_array_get_last(Cson *array);
-Cson* cson_array_dup(Cson *array);
-size_t cson_array_memsize(Cson *array);
+CBQLIB Cson* cson_array_new(void);
+CBQLIB CsonError cson_array_push(Cson *array, Cson *value);
+CBQLIB CsonError cson_array_pop(Cson *array, size_t index);
+CBQLIB Cson* cson_array_get(Cson *array, size_t index);
+CBQLIB Cson* cson_array_get_last(Cson *array);
+CBQLIB Cson* cson_array_dup(Cson *array);
+CBQLIB size_t cson_array_memsize(Cson *array);
 
-Cson* cson_map_new(void);
-CsonError cson_map_insert(Cson *map, CsonStr key, Cson *value);
-CsonError cson_map_remove(Cson *map, CsonStr key);
-Cson* cson_map_get(Cson *map, CsonStr key);
-Cson *cson_map_keys(Cson *map);
-Cson* cson_map_dup(Cson *map);
-size_t cson_map_memsize(Cson *map);
+CBQLIB Cson* cson_map_new(void);
+CBQLIB CsonError cson_map_insert(Cson *map, CsonStr key, Cson *value);
+CBQLIB CsonError cson_map_remove(Cson *map, CsonStr key);
+CBQLIB Cson* cson_map_get(Cson *map, CsonStr key);
+CBQLIB Cson *cson_map_keys(Cson *map);
+CBQLIB Cson* cson_map_dup(Cson *map);
+CBQLIB size_t cson_map_memsize(Cson *map);
 
 static CsonArena cson_default_arena = {0};
 static CsonArena *cson_current_arena = &cson_default_arena;
 
 CsonRegion* cson__new_region(size_t capacity);
-void* cson_alloc(CsonArena *arena, size_t size);
-void* cson_realloc(CsonArena *arena, void *old_ptr, size_t old_size, size_t new_size);
-void cson_free();
-void cson_swap_arena(CsonArena *arena);
-void cson_swap_and_free_arena(CsonArena *arena);
+CBQLIB void* cson_alloc(CsonArena *arena, size_t size);
+CBQLIB void* cson_realloc(CsonArena *arena, void *old_ptr, size_t old_size, size_t new_size);
+CBQLIB void cson_free();
+CBQLIB void cson_swap_arena(CsonArena *arena);
+CBQLIB void cson_swap_and_free_arena(CsonArena *arena);
 
 #define cson_str(string) ((CsonStr){.value=(string), .len=strlen(string)})
-CsonStr cson_str_new(char *cstr);
-CsonStr cson_str_dup(CsonStr str);
-uint32_t cson_str_hash(CsonStr str);
-bool cson_str_equals(CsonStr a, CsonStr b);
-size_t cson_str_memsize(CsonStr str);
+CBQLIB CsonStr cson_str_new(char *cstr);
+CBQLIB CsonStr cson_str_dup(CsonStr str);
+CBQLIB uint32_t cson_str_hash(CsonStr str);
+CBQLIB bool cson_str_equals(CsonStr a, CsonStr b);
+CBQLIB size_t cson_str_memsize(CsonStr str);
 
 #define CSON_PRINT_INDENT 4
 #define cson_print(cson) do{if (cson!=NULL){cson_fprint(cson, stdout, 0); putchar('\n');}else{printf("-null-\n");}} while (0)
 #define cson_array_print(array) do{if (array!=NULL){cson_array_fprint(array, stdout, 0); putchar('\n');}else{printf("-null-\n");}}while(0)
 #define cson_map_print(map) do{if (map!=NULL){cson_map_fprint(map, stdout, 0); putchar('\n');}else{printf("-null-\n");}}while(0)
-bool cson_write(Cson *json, char *filename);
-void cson_fprint(Cson *value, FILE *file, size_t indent);
-void cson_array_fprint(CsonArray *array, FILE *file, size_t indent);
-void cson_map_fprint(CsonMap *map, FILE *file, size_t indent);
+CBQLIB bool cson_write(Cson *json, char *filename);
+CBQLIB void cson_fprint(Cson *value, FILE *file, size_t indent);
+CBQLIB void cson_array_fprint(CsonArray *array, FILE *file, size_t indent);
+CBQLIB void cson_map_fprint(CsonMap *map, FILE *file, size_t indent);
 
 /* Lexer */
 #define cson_lex_is_whitespace(c) ((c == ' ' || c == '\n' || c == '\t'))
@@ -375,8 +377,8 @@ bool cson_lex_is_float(char *s, char *e);
 #define cson_parse(buffer, buffer_size) cson_parse_buffer(buffer, buffer_size, "")
 #define cson_error_unexpected(loc, actual, ...) cson__error_unexpected(loc, cson_token_args_array(__VA_ARGS__), actual, __FILE__, __LINE__)
 void cson__error_unexpected(CsonLoc loc, CsonTokenType expected[], size_t expected_count, CsonTokenType actual, char *filename, size_t line);
-Cson* cson_parse_buffer(char *buffer, size_t buffer_size, char *filename);
-Cson* cson_read(char *filename);
+CBQLIB Cson* cson_parse_buffer(char *buffer, size_t buffer_size, char *filename);
+CBQLIB Cson* cson_read(char *filename);
 bool cson__parse_map(Cson *map, CsonLexer *lexer);
 bool cson__parse_array(Cson *array, CsonLexer *lexer);
 bool cson__parse_value(Cson **cson, CsonLexer *lexer, CsonToken *token);

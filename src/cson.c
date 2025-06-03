@@ -1106,7 +1106,7 @@ Cson* cson_parse_buffer(char *buffer, size_t buffer_size, char *filename)
 Cson* cson_read(char *filename){
     FILE *file = fopen(filename, "r");
     if (file == NULL){
-        cson_error(CsonError_FileNotFound, "Could open file: \"%s\"", filename);
+        cson_error(CsonError_FileNotFound, "Could not open file: \"%s\"", filename);
         return NULL;
     }
     uint64_t file_size = cson_file_size(filename);

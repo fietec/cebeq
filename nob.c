@@ -30,7 +30,7 @@ void build_lib(Nob_Cmd *cmd)
     
     // Build core.o
     append_head(cmd);
-    nob_cmd_append(cmd, "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c");
+    nob_cmd_append(cmd, "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c", "src/cebeq.c");
 #ifdef _WIN32
     nob_cmd_append(cmd, "-shared", "-o", "build/core.dll");
 #else
@@ -80,7 +80,6 @@ void build_all(Nob_Cmd *cmd)
 }
 
 int main(int argc, char **argv)
-
 {
     NOB_GO_REBUILD_URSELF(argc, argv);
     if (!nob_mkdir_if_not_exists("build")){

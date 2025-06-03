@@ -1,21 +1,24 @@
 {
-    "content": {
-        "last_id": 2,
-        "dirs": [
-            "c:/users/constantijn/desktop",
-            "d:/cdemeer/geoguessr" 
-        ] 
+    "backups": {
+        "content": {
+            "last_id": 2,
+            "dirs": [
+                "c:/users/constantijn/desktop",
+                "d:/cdemeer/geoguessr"
+            ]
+        },
+        "testing": {
+            "last_id": 4,
+            "dirs": [
+                "c:/users/constantijn"
+            ]
+        },
+        "geoguessr": {
+            "last_id": 3,
+            "dirs": [
+                "d:/cdemeer/geoguessr"
+            ]
+        }
     },
-    "testing": {
-        "last_id": 4,
-        "dirs": [
-            "c:/users/constantijn" 
-        ] 
-    },
-    "geoguessr": {
-        "last_id": 3,
-        "dirs": [
-            "d:/cdemeer/geoguessr" 
-        ] 
-    } 
-}
+    "version": "0.0.1"
+} 
