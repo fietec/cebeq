@@ -227,7 +227,7 @@ bool flib_get_entry(DIR *dir, const char *dir_path, flib_entry *entry)
             struct stat attr;
             if (stat(entry->path, &attr) == -1){
                 eprintfn("Could not access '%s': %s\n", entry->path, strerror(errno));
-                return false;
+                return flib_get_entry(dir, dir_path, entry);
             }
             entry->size = attr.st_size;
             entry->mod_time = attr.st_mtime;

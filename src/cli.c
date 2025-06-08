@@ -7,7 +7,7 @@
 #include <cson.h>
 
 typedef enum{
-    Cmd_None, Cmd_Backup, Cmd_Merge
+    Cmd_None, Cmd_Backup, Cmd_Merge, Cmd_Branch
 } Cmd;
 
 static char *version = "";
@@ -27,7 +27,8 @@ void print_usage(const char *program_name) {
 
     printf("Commands:\n");
     printf("  backup              Create a backup\n");
-    printf("  merge               Merge existing backups\n\n");
+    printf("  merge               Merge existing backups\n");
+    printf("  branch              View and modify existing branches\n\n");
     
     printf("Options:\n");
     printf("  -h, --help          Show this help message\n");
@@ -46,7 +47,6 @@ void print_backup_usage(const char *program_name)
     printf("  parent              The parent backup\n\n");
     
     printf("Options for backup:\n");
-    printf("  -l, --list          List all available branches\n");
     printf("  -h, --help          Show this help message\n");
 }
 
@@ -60,6 +60,19 @@ void print_merge_usage(const char *program_name)
     
     printf("Options for merge:\n");
     printf("  -h, --help          Show this help message\n");
+}
+
+void print_branch_usage(const char *program_name) 
+{
+    printf("Usage: %s branch <command> [OPTIONS]\n\n", program_name);
+    
+    printf("Commands:\n");
+    printf("  list                  List all available branches\n");
+    printf("  new <name> <dirs>...  Create a new branch\n");
+    printf("  delete <name>         Delete a branch\n\n");
+    
+    printf("Options for branch:\n");
+    printf("  -h, --help            Show this help message\n");
 }
 
 int print_branches(Cson *branches)
@@ -90,7 +103,7 @@ int print_branches(Cson *branches)
 
 void print_version(const char *program_name)
 {
-    printf("%s - version %s\n\b", program_name, version);
+    printf("%s - version %s\n", program_name, version);
 }
 
 int run_backup(const char *args[])
@@ -98,17 +111,17 @@ int run_backup(const char *args[])
     return make_backup(args[0], args[1], args[2]);
 }
 
+int run_merge(const char *args[])
+{
+    return merge(args[0], args[1]);
+}
+
 int main(int argc, char **argv)
 {
-    (void) cson_current_arena;
-    cwk_path_set_style(CWK_STYLE_UNIX);
-    
-    char cwd_path[FILENAME_MAX] = {0};
-    if (!get_exe_path(cwd_path, sizeof(cwd_path))) return 1;
-    if (!get_parent_dir(cwd_path, cwd_path, sizeof(cwd_path))) return 1;
+    if (!setup()) return 1;
     
     char info_path[FILENAME_MAX] = {0};
-    cwk_path_join(cwd_path, "../data/backups.json", info_path, sizeof(info_path));
+    cwk_path_join(program_dir, "data/backups.json", info_path, sizeof(info_path));
     
     Cson *info = cson_read(info_path);
     if (info == NULL){
@@ -150,6 +163,9 @@ int main(int argc, char **argv)
                 else if (strcmp(arg, "merge") == 0){
                     current_command = Cmd_Merge;
                 }
+                else if (strcmp(arg, "branch") == 0){
+                    current_command = Cmd_Branch;
+                }
                 else{
                     fprintf(stderr, "[ERROR] Unknown argument: '%s'!\n\n", arg);
                     print_usage(program_name);
@@ -160,14 +176,6 @@ int main(int argc, char **argv)
                 if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0){
                     print_backup_usage(program_name);
                     return 0;
-                }
-                else if (strcmp(arg, "--list") == 0 || strcmp(arg, "-l") == 0){
-                    Cson *branches = cson_get(info, key("backups"));
-                    if (!cson_is_map(branches)){
-                        fprintf(stderr, "[ERROR] Invalid info file state!\n");
-                        return 1;
-                    }
-                    return print_branches(branches);
                 }
                 else{
                     if (command_option_count >= 3){
@@ -190,6 +198,33 @@ int main(int argc, char **argv)
                         return 1;
                     }
                     command_options[command_option_count++] = arg;
+                }
+            } break;
+            case Cmd_Branch: {
+                if (strcmp(arg, "list") == 0){
+                    Cson *branches = cson_get(info, key("backups"));
+                    if (!cson_is_map(branches)){
+                        fprintf(stderr, "[ERROR] Invalid info file state!\n");
+                        return 1;
+                    }
+                    return print_branches(branches);
+                }
+                else if (strcmp(arg, "new") == 0){
+                    printf("TODO: branch new\n");
+                    return 0;
+                }
+                else if (strcmp(arg, "delete") == 0){
+                    printf("TODO: branch delete\n");
+                    return 0;
+                }
+                else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0){
+                    print_branch_usage(program_name);
+                    return 0;
+                }
+                else{
+                    fprintf(stderr, "[ERROR] Unknown option: '%s'!\n", arg);
+                    print_branch_usage(program_name);
+                    return 1;
                 }
             } break;
             default: UNREACHABLE("Invalid Cmd type\n");
@@ -216,6 +251,9 @@ int main(int argc, char **argv)
             }
             printf("\nTODO: implement 'merge' call\n");
         }break;
+        case Cmd_Branch:{
+            print_branch_usage(program_name);
+        } break;
         default: UNREACHABLE("Invalid Cmd type\n\n");
     }
     

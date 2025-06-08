@@ -196,9 +196,12 @@ int make_backup(const char *branch_name, const char *dest, const char *parent)
     CsonArena *prev_arena = cson_current_arena;
     cson_swap_arena(&arena);
     
-    Cson *backups = cson_read(BACKUPS_JSON);
+    char backups_path[FILENAME_MAX];
+    cwk_path_join(program_dir, BACKUPS_JSON, backups_path, sizeof(backups_path));
+    
+    Cson *backups = cson_read(backups_path);
     if (backups == NULL){
-        eprintfn("Could not find backups file!");
+        eprintfn("Could not find backups file '%s'!", backups_path);
         return_defer(1);
     }
     Cson *branch = cson_map_get(backups, cson_str((char*) branch_name));

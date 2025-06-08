@@ -264,8 +264,7 @@ CBQLIB Cson *cson_map_keys(Cson *map);
 CBQLIB Cson* cson_map_dup(Cson *map);
 CBQLIB size_t cson_map_memsize(Cson *map);
 
-static CsonArena cson_default_arena = {0};
-static CsonArena *cson_current_arena = &cson_default_arena;
+extern CsonArena *cson_current_arena;
 
 CsonRegion* cson__new_region(size_t capacity);
 CBQLIB void* cson_alloc(CsonArena *arena, size_t size);

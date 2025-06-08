@@ -7,17 +7,18 @@
 #include <stdbool.h>
 
 #ifdef _WIN32
+  #ifdef CEBEQ_EXPORT
     #define CBQLIB __declspec(dllexport)
+  #else
+    #define CBQLIB __declspec(dllimport)
+  #endif
 #else
-    #define CBQLIB
+  #define CBQLIB __attribute__((visibility("default")))
 #endif // _WIN32
 
 #define PROGRAM_NAME "cebeq"
-
-#define BACKUPS_JSON "D:/cdemeer/Programming/C/" PROGRAM_NAME "/data/backups.json"
-#define FULL_BACKUPS_JSON "D:/cdemeer/Programming/C/" PROGRAM_NAME "/data/full_backups.json"
-
 #define INFO_FILE "." PROGRAM_NAME
+#define BACKUPS_JSON "data/backups.json"
 
 #define s_bool(s) ((s)>0? "true": "false")
 
@@ -28,11 +29,20 @@
 
 #define return_defer(v) do{value = (v); goto defer;}while(0)
 
-#define dprintfn(msg, ...) (fprintf(stdout, "%s[INFO] %s:%d " msg "\n%s", ansi_rgb(0, 196, 196), __FILE__, __LINE__, ##__VA_ARGS__, ansi_end))
-#define iprintfn(msg, ...) (fprintf(stdout, "%s[INFO] " msg "\n%s", ansi_rgb(0, 196, 196), ##__VA_ARGS__, ansi_end))
-#define eprintfn(msg, ...) (fprintf(stderr, "%s[ERROR] %s:%d in %s: " msg "\n%s", ansi_rgb(196, 0, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
+#ifdef CEBEQ_DEBUG
+    #define iprintfn(msg, ...) (fprintf(stdout, "%s[INFO] %s:%d in %s: " msg "\n%s", ansi_rgb(0, 196, 196), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
+    #define eprintfn(msg, ...) (fprintf(stderr, "%s[ERROR] %s:%d in %s: " msg "\n%s", ansi_rgb(196, 0, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
+#else
+    #define iprintfn(msg, ...) (fprintf(stdout, "%s[INFO] " msg "\n%s", ansi_rgb(0, 196, 196), ##__VA_ARGS__, ansi_end))
+    #define eprintfn(msg, ...) (fprintf(stderr, "%s[ERROR] " msg "\n%s", ansi_rgb(196, 0, 0), ##__VA_ARGS__, ansi_end))
+#endif // CEBEQ_DEBUG
 
 #define UNREACHABLE(...) (eprintfn(__VA_ARGS__), assert(0))
+
+CBQLIB extern char program_dir[FILENAME_MAX];
+CBQLIB extern char exe_dir[FILENAME_MAX];
+
+CBQLIB bool setup(void);
 
 CBQLIB int make_backup(const char *branch_name, const char *dest, const char *parent);
 CBQLIB int merge(const char *src, const char *dest);

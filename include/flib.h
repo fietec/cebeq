@@ -20,6 +20,7 @@
 
 /* Dependencies */
 #include <cwalk.h> // https://github.com/likle/cwalk
+#include <cebeq.h>
 
 #ifndef FLIB_SILENT
     #define flib_error(msg, ...) (fprintf(stderr, "[ERROR] "msg"\n", __VA_ARGS__))
@@ -33,7 +34,6 @@
 
 #define ansi_rgb(r, g, b) ("\e[38;2;" #r ";" #g ";" #b "m") 
 #define ansi_end ("\e[0m") 
-#define eprintfn(msg, ...) (fprintf(stderr, "%s[ERROR] %s:%d in %s: " msg "\n%s", ansi_rgb(196, 0, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
 
 #define FLIB_SIZE_ERROR (fsize_t)-1
 

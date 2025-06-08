@@ -4,6 +4,7 @@
 
 #include <cebeq.h>
 #include <cwalk.h>
+#include <cson.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -16,6 +17,25 @@
 #include <libgen.h>
 #include <limits.h>
 #endif
+
+char program_dir[FILENAME_MAX];
+char exe_dir[FILENAME_MAX];
+
+bool setup(void)
+{
+    (void) cson_current_arena;
+    cwk_path_set_style(CWK_STYLE_UNIX);
+    
+    if (!get_exe_path(program_dir, sizeof(program_dir))){
+        eprintfn("Failed to retrieve executable path!");
+        return false;
+    }
+    (void) get_parent_dir(program_dir, exe_dir, sizeof(exe_dir));
+    iprintfn("exe_dir: '%s'", exe_dir);
+    (void) get_parent_dir(exe_dir, program_dir, sizeof(program_dir));
+    iprintfn("program_dir: '%s'", program_dir);
+    return true;
+}
 
 void convert_seperators(const char *path, char *buffer, size_t buffer_size)
 {
