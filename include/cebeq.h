@@ -16,6 +16,8 @@
   #define CBQLIB __attribute__((visibility("default")))
 #endif // _WIN32
 
+#define MAX_LONG_PATH 32767
+
 #define PROGRAM_NAME "cebeq"
 #define INFO_FILE "." PROGRAM_NAME
 #define BACKUPS_JSON "data/backups.json"
@@ -43,8 +45,10 @@
 
 CBQLIB extern char program_dir[FILENAME_MAX];
 CBQLIB extern char exe_dir[FILENAME_MAX];
+CBQLIB extern char *long_path_buf;
 
 CBQLIB bool setup(void);
+CBQLIB void cleanup(void);
 
 CBQLIB int make_backup(const char *branch_name, const char *dest, const char *parent);
 CBQLIB int merge(const char *src, const char *dest);

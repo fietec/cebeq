@@ -24,7 +24,7 @@ char exe_dir[FILENAME_MAX];
 bool setup(void)
 {
     (void) cson_current_arena;
-    cwk_path_set_style(CWK_STYLE_UNIX);
+    //cwk_path_set_style(CWK_STYLE_UNIX);
     
     if (!get_exe_path(program_dir, sizeof(program_dir))){
         eprintfn("Failed to retrieve executable path!");
@@ -35,6 +35,12 @@ bool setup(void)
     (void) get_parent_dir(exe_dir, program_dir, sizeof(program_dir));
     dprintfn("program_dir: '%s'", program_dir);
     return true;
+}
+
+void cleanup(void)
+{
+    free(long_path_buf);
+    long_path_buf = NULL;
 }
 
 void convert_seperators(const char *path, char *buffer, size_t buffer_size)
@@ -55,8 +61,8 @@ void convert_seperators(const char *path, char *buffer, size_t buffer_size)
 
 void norm_path(const char *path, char *buffer, size_t buffer_size)
 {
-    convert_seperators(path, buffer, buffer_size);
-    cwk_path_normalize(buffer, buffer, buffer_size);
+    //convert_seperators(path, buffer, buffer_size);
+    cwk_path_normalize(path, buffer, buffer_size);
 }
 
 bool get_exe_path(char *buffer, size_t buffer_size)

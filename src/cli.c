@@ -108,12 +108,16 @@ void print_version(const char *program_name)
 
 int run_backup(const char *args[])
 {
-    return make_backup(args[0], args[1], args[2]);
+    int ret = make_backup(args[0], args[1], args[2]);
+    cleanup();
+    return ret;
 }
 
 int run_merge(const char *args[])
 {
-    return merge(args[0], args[1]);
+    int ret = merge(args[0], args[1]);
+    cleanup();
+    return ret;
 }
 
 int main(int argc, char **argv)

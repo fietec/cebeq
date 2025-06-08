@@ -1,5 +1,36 @@
 #include <flib.h>
 
+char *long_path_buf = NULL;
+#ifdef _WIN32
+    LPVOID win_get_last_error(void) 
+    { 
+        LPVOID lpMsgBuf;
+        DWORD dw = GetLastError(); 
+
+        FormatMessage(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+            FORMAT_MESSAGE_FROM_SYSTEM |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL,
+            dw,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPTSTR) &lpMsgBuf,
+            0, NULL );
+        return lpMsgBuf;
+    }
+    
+    const char *win_long_path(const char *path)
+    {
+        if (!long_path_buf) {
+            long_path_buf = calloc(1, MAX_LONG_PATH);
+            assert(long_path_buf != NULL && "Buy more RAM lol");
+        }
+        if (strncmp(path, "\\\\?\\", 4) == 0) return path;
+        snprintf(long_path_buf, MAX_LONG_PATH, "\\\\?\\%s", path);
+        return long_path_buf;
+    }
+#endif // _WIN32
+
 bool flib_read(const char *path, flib_cont *fc)
 {
     if (fc == NULL) return false;
@@ -25,13 +56,19 @@ bool flib_read(const char *path, flib_cont *fc)
 bool create_dir(const char *path)
 {
   #ifdef _WIN32
-    if (mkdir(path) == -1){
+    const char *long_path = win_long_path(path);
+    if (mkdir(long_path) == -1){
+        LPVOID error = win_get_last_error();
+        eprintfn("Could not create directory '%s': %s!", long_path, (char*) error);
+        LocalFree(error);
+        return false;
+    }
   #else
 	if (mkdir(path, 0700) == -1){
-  #endif // _WIN32
         eprintfn("Could not create directory '%s': %s!", path, strerror(errno));
         return false;
     }
+  #endif // _WIN32
     return true;
 }
 
@@ -57,8 +94,11 @@ int flib_delete_dir(const char *path)
 int copy_file(const char *from, const char *to)
 {
   #ifdef _WIN32
-    if (CopyFile(from, to, false) == 0){
-        eprintfn("Failed to copy '%s' -> '%s'", from, to);
+    const char *long_path = win_long_path(to);
+    if (CopyFile(from, long_path, false) == 0){
+        LPVOID error = win_get_last_error();
+        eprintfn("Failed to copy '%s' -> '%s': %s", from, long_path, (char*) error);
+        LocalFree(error);
         return 1;
     }
     return 0;
@@ -218,23 +258,24 @@ bool flib_get_entry(DIR *dir, const char *dir_path, flib_entry *entry)
     strncpy(entry->name, d_entry->d_name, FILENAME_MAX);
     if (strcmp(entry->name, ".") == 0 || strcmp(entry->name, "..") == 0) return flib_get_entry(dir, dir_path, entry);
     (void)cwk_path_join(dir_path, d_entry->d_name, entry->path, sizeof(entry->path));
-    switch (d_entry->d_type){
-        case DT_DIR:{
-            entry->type = FLIB_DIR;
-        } break;
-        case DT_REG:{
-            entry->type = FLIB_FILE;
-            struct stat attr;
-            if (stat(entry->path, &attr) == -1){
-                eprintfn("Could not access '%s': %s\n", entry->path, strerror(errno));
-                return flib_get_entry(dir, dir_path, entry);
-            }
-            entry->size = attr.st_size;
-            entry->mod_time = attr.st_mtime;
-        } break;
-        default:{
-            entry->type = FLIB_UNSP;
-        }
+    
+    struct stat attr;
+    if (stat(entry->path, &attr) == -1){
+        eprintfn("Could not access '%s': %s\n", entry->path, strerror(errno));
+        return flib_get_entry(dir, dir_path, entry);
+    }
+   
+    if (S_ISREG(attr.st_mode)){
+        entry->type = FLIB_FILE;
+        entry->size = attr.st_size;
+        entry->mod_time = attr.st_mtime;
+    }
+    else if (S_ISDIR(attr.st_mode)){
+        entry->type = FLIB_DIR;
+    }
+    else{
+        entry->type = FLIB_UNSP;
+        dprintfn("'%s' is of unsupported type: %u!", entry->path, d_entry->d_type);
     }
     return true;
 }

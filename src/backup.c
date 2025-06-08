@@ -39,8 +39,12 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
     int value = 0;
     DIR *dir = opendir(src);
     if (dir == NULL){
-        eprintfn("This is no valid src directory: '%s'!", src);
-        return 1;
+        if (!flib_exists(src)){
+            eprintfn("This is no valid src directory: '%s'!", src);
+            return 1;
+        }
+        eprintfn("Cannot access '%s'!. Skipping..", src);
+        return 0;
     }
     if (!flib_isdir(dest)){
         eprintfn("This is no valid dest directory: '%s'!", dest);
@@ -81,8 +85,14 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
     while (flib_get_entry(dir, src, &entry)){
         cwk_path_join(dest, entry.name, item_dest_path, FILENAME_MAX);
         CsonStr entry_key = cson_str_new(entry.name);
+        
         switch (entry.type){
+            case FLIB_UNSP:
             case FLIB_FILE:{
+                if (access(entry.path, R_OK) != 0){
+                    eprintfn("No permission for '%s'! Skipping.", entry.path);
+                    continue;
+                }
                 int64_t mod_time = (int64_t) entry.mod_time;
                 cson_map_insert(files, entry_key, cson_new_int(mod_time));
                 if (prev_files != NULL){
@@ -96,6 +106,10 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
                 copy_file(entry.path, item_dest_path);
             } break;
             case FLIB_DIR:{
+                if (access(entry.path, X_OK) != 0){
+                    eprintfn("No permission for '%s'! Skipping.", entry.path);
+                    continue;
+                }
                 if (prev_dirs != NULL){
                     Cson *prev_dir = cson_map_get(prev_dirs, entry_key);
                     if (prev_dir != NULL){
@@ -204,7 +218,8 @@ int make_backup(const char *branch_name, const char *dest, const char *parent)
         eprintfn("Could not find backups file '%s'!", backups_path);
         return_defer(1);
     }
-    Cson *branch = cson_map_get(backups, cson_str((char*) branch_name));
+
+    Cson *branch = cson_get(backups, key("backups"), key((char*) branch_name));
     if (branch == NULL){
         eprintfn("Could not find a branch with name '%s'!", branch_name);
         return_defer(1);
@@ -232,9 +247,9 @@ int make_backup(const char *branch_name, const char *dest, const char *parent)
         }
         if (backup_init(src, dest_path, parent) == 1){
             eprintfn("Failed to create backup! Cleaning up..");
-            if (flib_delete_dir(dest_path) == 1){
-                eprintfn("Failed to delete backup!");
-            }
+            //if (flib_delete_dir(dest_path) == 1){
+            //    eprintfn("Failed to delete backup!");
+            //}
             return_defer(1);
         }
     }
