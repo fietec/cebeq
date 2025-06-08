@@ -30,9 +30,11 @@
 #define return_defer(v) do{value = (v); goto defer;}while(0)
 
 #ifdef CEBEQ_DEBUG
+    #define dprintfn(msg, ...) (fprintf(stdout, "%s[DEBUG] %s:%d in %s: " msg "\n%s", ansi_rgb(196, 196, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
     #define iprintfn(msg, ...) (fprintf(stdout, "%s[INFO] %s:%d in %s: " msg "\n%s", ansi_rgb(0, 196, 196), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
     #define eprintfn(msg, ...) (fprintf(stderr, "%s[ERROR] %s:%d in %s: " msg "\n%s", ansi_rgb(196, 0, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
 #else
+    #define dprintfn(msg, ...) 
     #define iprintfn(msg, ...) (fprintf(stdout, "%s[INFO] " msg "\n%s", ansi_rgb(0, 196, 196), ##__VA_ARGS__, ansi_end))
     #define eprintfn(msg, ...) (fprintf(stderr, "%s[ERROR] " msg "\n%s", ansi_rgb(196, 0, 0), ##__VA_ARGS__, ansi_end))
 #endif // CEBEQ_DEBUG

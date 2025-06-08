@@ -31,9 +31,9 @@ bool setup(void)
         return false;
     }
     (void) get_parent_dir(program_dir, exe_dir, sizeof(exe_dir));
-    iprintfn("exe_dir: '%s'", exe_dir);
+    dprintfn("exe_dir: '%s'", exe_dir);
     (void) get_parent_dir(exe_dir, program_dir, sizeof(program_dir));
-    iprintfn("program_dir: '%s'", program_dir);
+    dprintfn("program_dir: '%s'", program_dir);
     return true;
 }
 

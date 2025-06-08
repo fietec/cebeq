@@ -252,7 +252,7 @@ int make_backup(const char *branch_name, const char *dest, const char *parent)
     cwk_path_join(dest_path, INFO_FILE, dest_name, FILENAME_MAX);
     cson_write(root, dest_name);
     
-    cson_write(backups, BACKUPS_JSON);
+    cson_write(backups, backups_path);
     
     iprintfn("Successfully created backup for branch '%s' at '%s'", branch_name, dest_path);
   defer:
