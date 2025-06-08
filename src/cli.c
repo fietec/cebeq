@@ -245,11 +245,7 @@ int main(int argc, char **argv)
                 print_merge_usage(program_name);
                 return 1;
             }
-            printf("Arguments: ");
-            for (size_t i=0; i<command_option_count; ++i){
-                printf("'%s' ", command_options[i]);
-            }
-            printf("\nTODO: implement 'merge' call\n");
+            return run_merge(command_options);
         }break;
         case Cmd_Branch:{
             print_branch_usage(program_name);
