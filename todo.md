@@ -3,4 +3,3 @@
 - Fix %u issues for Windows and Linux
 - do testing
 - write gui client
-- add way of thread communication

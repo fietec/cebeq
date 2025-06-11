@@ -59,13 +59,13 @@ bool create_dir(const char *path)
     const char *long_path = win_long_path(path);
     if (mkdir(long_path) == -1){
         LPVOID error = win_get_last_error();
-        eprintfn("Could not create directory '%s': %s!", long_path, (char*) error);
+        eprintf("Could not create directory '%s': %s!", long_path, (char*) error);
         LocalFree(error);
         return false;
     }
   #else
 	if (mkdir(path, 0700) == -1){
-        eprintfn("Could not create directory '%s': %s!", path, strerror(errno));
+        eprintf("Could not create directory '%s': %s!", path, strerror(errno));
         return false;
     }
   #endif // _WIN32
@@ -97,7 +97,7 @@ int copy_file(const char *from, const char *to)
     const char *long_path = win_long_path(to);
     if (CopyFile(from, long_path, false) == 0){
         LPVOID error = win_get_last_error();
-        eprintfn("Failed to copy '%s' -> '%s': %s", from, long_path, (char*) error);
+        eprintf("Failed to copy '%s' -> '%s': %s", from, long_path, (char*) error);
         LocalFree(error);
         return 1;
     }
@@ -110,13 +110,13 @@ int copy_file(const char *from, const char *to)
 
     fd_from = open(from, O_RDONLY);
     if (fd_from < 0){
-        eprintfn("Could not read file '%s'!", from);
+        eprintf("Could not read file '%s'!", from);
         return 1;
     }
 
     fd_to = open(to, O_WRONLY | O_CREAT, 0666);
     if (fd_to < 0){
-        eprintfn("Could not write file '%s'!", to);
+        eprintf("Could not write file '%s'!", to);
         return 1;
     }
     while (nread = read(fd_from, buffer, sizeof(buffer)), nread > 0){
@@ -149,19 +149,19 @@ int copy_file(const char *from, const char *to)
     if (fd_to >= 0) close(fd_to);
 
     errno = saved_errno;
-    eprintfn("Failed to copy '%s' -> '%s': %s!", from, to, strerror(errno));
+    eprintf("Failed to copy '%s' -> '%s': %s!", from, to, strerror(errno));
     return 1;
 }
 
 int copy_dir_rec(const char *src, const char *dest)
 {
     if (!flib_isdir(dest)){
-        eprintfn("Not a valid directory: '%s'!", dest);
+        eprintf("Not a valid directory: '%s'!", dest);
         return 1;
     }
     DIR *dir = opendir(src);
     if (dir == NULL){
-        eprintfn("Not a valid directory: '%s'!", src);
+        eprintf("Not a valid directory: '%s'!", src);
         return 1;
     }
     struct dirent *entry;
@@ -189,12 +189,12 @@ int copy_dir_rec(const char *src, const char *dest)
 int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore, size_t ignore_count)
 {
     if (!flib_isdir(dest)){
-        eprintfn("Not a valid directory: '%s'!", dest);
+        eprintf("Not a valid directory: '%s'!", dest);
         return 1;
     }
     DIR *dir = opendir(src);
     if (dir == NULL){
-        eprintfn("Not a valid directory: '%s'!", src);
+        eprintf("Not a valid directory: '%s'!", src);
         return 1;
     }
     struct dirent *entry;
@@ -261,7 +261,7 @@ bool flib_get_entry(DIR *dir, const char *dir_path, flib_entry *entry)
     
     struct stat attr;
     if (stat(entry->path, &attr) == -1){
-        eprintfn("Could not access '%s': %s\n", entry->path, strerror(errno));
+        eprintf("Could not access '%s': %s\n", entry->path, strerror(errno));
         return flib_get_entry(dir, dir_path, entry);
     }
    
@@ -275,7 +275,7 @@ bool flib_get_entry(DIR *dir, const char *dir_path, flib_entry *entry)
     }
     else{
         entry->type = FLIB_UNSP;
-        dprintfn("'%s' is of unsupported type: %u!", entry->path, d_entry->d_type);
+        dprintf("'%s' is of unsupported type: %u!", entry->path, d_entry->d_type);
     }
     return true;
 }
@@ -291,7 +291,7 @@ fsize_t flib_dir_size(DIR *dir, const char *dir_path)
             (void)cwk_path_join(dir_path, d_entry->d_name, path, sizeof(path));
             struct stat attr;
             if (stat(path, &attr) == -1){
-                eprintfn("Could not access '%s': %s!", path, strerror(errno));
+                eprintf("Could not access '%s': %s!", path, strerror(errno));
                 continue;
             }
             size += attr.st_size;
@@ -312,7 +312,7 @@ fsize_t flib_dir_size_rec(DIR *dir, const char *dir_path)
             case DT_REG: {
                 struct stat attr;
                 if (stat(path, &attr) == -1){
-                    eprintfn("Could not access file '%s': %s!", path, strerror(errno));
+                    eprintf("Could not access file '%s': %s!", path, strerror(errno));
                     continue;
                 }
                 size += attr.st_size;
@@ -320,7 +320,7 @@ fsize_t flib_dir_size_rec(DIR *dir, const char *dir_path)
             case DT_DIR: {
                 DIR *sub_dir = opendir(path);
                 if (sub_dir == NULL){
-                    eprintfn("Could not find dir '%s': %s!", path, strerror(errno));
+                    eprintf("Could not find dir '%s': %s!", path, strerror(errno));
                     continue;
                 }
                 size += flib_dir_size_rec(sub_dir, path);

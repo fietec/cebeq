@@ -10,11 +10,11 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
 {
     DIR *dir = opendir(src);
     if (dir == NULL){
-        eprintfn("Invalid src directory: '%s'!", src);
+        eprintf("Invalid src directory: '%s'!", src);
         return 1;
     }
     if (!flib_isdir(dest)){
-        eprintfn("Invalid dest directory: '%s'!", dest);
+        eprintf("Invalid dest directory: '%s'!", dest);
         closedir(dir);
         return 1;
     }
@@ -25,21 +25,21 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
     cwk_path_join(src, INFO_FILE, info_path, FILENAME_MAX);
     Cson *info = cson_read(info_path);
     if (info == NULL){
-        eprintfn("Could not find backup info file '%s'!", info_path);
+        eprintf("Could not find backup info file '%s'!", info_path);
         return_defer(1);
     }
     
     if (files == NULL){
         files = cson_map_get(info, cson_str("files"));
         if (files == NULL){
-            eprintfn("Could not find a 'files' entry in backup info file '%s'!", info_path);
+            eprintf("Could not find a 'files' entry in backup info file '%s'!", info_path);
             return_defer(1);
         }
     }
     if (dirs == NULL){
         dirs = cson_map_get(info, cson_str("dirs"));
         if (dirs == NULL){
-            eprintfn("Could not find a 'dirs' entry in backup info file '%s'!", info_path);
+            eprintf("Could not find a 'dirs' entry in backup info file '%s'!", info_path);
             return_defer(1);
         }
     }
@@ -62,7 +62,7 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
         else if (entry.type == FLIB_DIR){
             Cson *info_item = cson_map_get(dirs, cson_str(entry.name));
             if (info_item == NULL){
-                eprintfn("Found unregistered directory '%s'!", entry.path);
+                eprintf("Found unregistered directory '%s'!", entry.path);
                 return_defer(1);
             }
         }
@@ -72,7 +72,7 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
         bool found = false;
         Cson *file_keys = cson_map_keys(files);
         for (size_t i=0; i<cson_len(files); ++i){
-            eprintfn("Could not find any version of '%s'!", cson_get_cstring(file_keys, index(i)));    
+            eprintf("Could not find any version of '%s'!", cson_get_cstring(file_keys, index(i)));    
             found = true;
         }
         if (found) return_defer(1);
@@ -89,11 +89,11 @@ int merge_root(const char *src, const char *dest)
 {
     DIR *dir = opendir(src);
     if (dir == NULL){
-        eprintfn("Invalid src directory: '%s'!", src);
+        eprintf("Invalid src directory: '%s'!", src);
         return 1;
     }
     if (!flib_isdir(dest)){
-        eprintfn("Invalid dest directory: '%s'!", dest);
+        eprintf("Invalid dest directory: '%s'!", dest);
         closedir(dir);
         return 1;
     }
@@ -107,23 +107,23 @@ int merge_root(const char *src, const char *dest)
     char info_path[FILENAME_MAX] = {0};
     cwk_path_join(src, INFO_FILE, info_path, FILENAME_MAX);
     if (!flib_isfile(info_path)){
-        eprintfn("Could not find backup info file '%s'!", info_path);
+        eprintf("Could not find backup info file '%s'!", info_path);
         return_defer(1);
     }
     Cson *info = cson_read(info_path);
     if (info == NULL){
-        eprintfn("Could not read backup info file '%s'!", info_path);
+        eprintf("Could not read backup info file '%s'!", info_path);
         return_defer(1);
     }
     
     Cson *files = cson_map_get(info, cson_str("files"));
     if (files == NULL){
-        eprintfn("Could not find a 'files' entry in backup info file '%s'!", info_path);
+        eprintf("Could not find a 'files' entry in backup info file '%s'!", info_path);
         return_defer(1);
     }
     Cson *dirs = cson_map_get(info, cson_str("dirs"));
     if (dirs == NULL){
-        eprintfn("Could not find a 'dirs' entry in backup info file '%s'!", info_path);
+        eprintf("Could not find a 'dirs' entry in backup info file '%s'!", info_path);
         return_defer(1);
     }
     
@@ -138,7 +138,7 @@ int merge_root(const char *src, const char *dest)
                 if (strcmp(entry.name, INFO_FILE) == 0) continue;
                 Cson *info_item = cson_map_get(files, cson_str(entry.name));
                 if (info_item == NULL){
-                    eprintfn("Found unregistered file '%s'!", entry.path);
+                    eprintf("Found unregistered file '%s'!", entry.path);
                     return_defer(1);
                 }
                 (void)copy_file(entry.path, item_dest_path);
@@ -147,12 +147,12 @@ int merge_root(const char *src, const char *dest)
             case FLIB_DIR: {
                 Cson *info_item = cson_map_get(dirs, cson_str(entry.name));
                 if (info_item == NULL){
-                    eprintfn("Found unregistered dir '%s'!", entry.path);
+                    eprintf("Found unregistered dir '%s'!", entry.path);
                     return_defer(1);
                 }
                 if (!flib_isdir(item_dest_path) && !create_dir(item_dest_path)) continue;
                 if (merge_root(entry.path, item_dest_path) == 1){
-                    eprintfn("Failed to merge '%s'!", entry.path);
+                    eprintf("Failed to merge '%s'!", entry.path);
                 }
             } break;
             default: continue;
@@ -172,11 +172,11 @@ int merge(const char *src, const char *dest)
 {
     DIR *dir = opendir(src);
     if (dir == NULL){
-        eprintfn("Could not find backup: '%s'!", src);
+        eprintf("Could not find backup: '%s'!", src);
         return 1;
     }
     if (!flib_isdir(dest)){
-        eprintfn("Could not find dest dir: '%s'!", dest);
+        eprintf("Could not find dest dir: '%s'!", dest);
         closedir(dir);
         return 1;
     }
@@ -188,15 +188,24 @@ int merge(const char *src, const char *dest)
         if (entry.type == FLIB_DIR){
             cwk_path_join(dest, entry.name, item_dest_path, FILENAME_MAX);
             if (!create_dir(item_dest_path)) return_defer(1);
+            iprintf("Merging '%s'..", entry.name);
             if (merge_root(entry.path, item_dest_path) == 1){
-                eprintfn("Failed to merge '%s'!", entry.name);
+                eprintf("Failed to merge '%s'!", entry.name);
                 flib_delete_dir(item_dest_path);
                 return_defer(1);
             }
-            iprintfn("Successfully merged backups into '%s'!", item_dest_path);
+            iprintf("Successfully merged backups into '%s'!", item_dest_path);
         }
     }
   defer:
     closedir(dir);
     return value;
+}
+
+void* tmerge(void *pargs)
+{
+    thread_args_t *args = (thread_args_t*) pargs;
+    (void) merge(args->args[0], args->args[1]);
+    worker_done = 1;
+    return NULL;
 }

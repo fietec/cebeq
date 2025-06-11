@@ -21,6 +21,7 @@
 /* Dependencies */
 #include <cwalk.h> // https://github.com/likle/cwalk
 #include <cebeq.h>
+#include <message_queue.h>
 
 #ifndef FLIB_SILENT
     #define flib_error(msg, ...) (fprintf(stderr, "[ERROR] "msg"\n", __VA_ARGS__))

@@ -5,6 +5,7 @@
 #include <cebeq.h>
 #include <cwalk.h>
 #include <cson.h>
+#include <message_queue.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -20,6 +21,7 @@
 
 char program_dir[FILENAME_MAX];
 char exe_dir[FILENAME_MAX];
+volatile int worker_done = 0;
 
 bool setup(void)
 {
@@ -27,7 +29,7 @@ bool setup(void)
     //cwk_path_set_style(CWK_STYLE_UNIX);
     
     if (!get_exe_path(program_dir, sizeof(program_dir))){
-        eprintfn("Failed to retrieve executable path!");
+        eprintf("Failed to retrieve executable path!");
         return false;
     }
     (void) get_parent_dir(program_dir, exe_dir, sizeof(exe_dir));

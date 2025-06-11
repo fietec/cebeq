@@ -31,26 +31,45 @@
 
 #define return_defer(v) do{value = (v); goto defer;}while(0)
 
-#ifdef CEBEQ_DEBUG
-    #define dprintfn(msg, ...) (fprintf(stdout, "%s[DEBUG] %s:%d in %s: " msg "\n%s", ansi_rgb(196, 196, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
-    #define iprintfn(msg, ...) (fprintf(stdout, "%s[INFO] %s:%d in %s: " msg "\n%s", ansi_rgb(0, 196, 196), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
-    #define eprintfn(msg, ...) (fprintf(stderr, "%s[ERROR] %s:%d in %s: " msg "\n%s", ansi_rgb(196, 0, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end))
+#ifdef CEBEQ_COLOR
+    #ifdef CEBEQ_DEBUG
+        #define dprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "%s[DEBUG] %s:%d in %s: " msg "%s", ansi_rgb(196, 196, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end); msgq_push(msgb);}while(0)
+        #define iprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "%s[INFO] %s:%d in %s: " msg "%s", ansi_rgb(0, 196, 196), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end); msgq_push(msgb);}while(0)
+        #define eprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "%s[ERROR] %s:%d in %s: " msg "%s", ansi_rgb(196, 0, 0), __FILE__, __LINE__, __func__, ##__VA_ARGS__, ansi_end); msgq_push(msgb);}while(0)
+    #else
+        #define dprintf(msg, ...) 
+        #define iprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "%s[INFO] " msg "%s", ansi_rgb(0, 196, 196), ##__VA_ARGS__, ansi_end); msgq_push(msgb);}while(0)
+        #define eprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "%s[ERROR] " msg "%s", ansi_rgb(196, 0, 0), ##__VA_ARGS__, ansi_end); msgq_push(msgb);}while(0)
+    #endif // CEBEQ_DEBUG
 #else
-    #define dprintfn(msg, ...) 
-    #define iprintfn(msg, ...) (fprintf(stdout, "%s[INFO] " msg "\n%s", ansi_rgb(0, 196, 196), ##__VA_ARGS__, ansi_end))
-    #define eprintfn(msg, ...) (fprintf(stderr, "%s[ERROR] " msg "\n%s", ansi_rgb(196, 0, 0), ##__VA_ARGS__, ansi_end))
-#endif // CEBEQ_DEBUG
+    #ifdef CEBEQ_DEBUG
+        #define dprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "[DEBUG] %s:%d in %s: " msg "", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
+        #define iprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "[INFO] %s:%d in %s: " msg "", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
+        #define eprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "[ERROR] %s:%d in %s: " msg "", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
+    #else
+        #define dprintf(msg, ...) 
+        #define iprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "[INFO]" msg "", ##__VA_ARGS__); msgq_push(msgb);}while(0)
+        #define eprintf(msg, ...) do{char msgb[128]; snprintf(msgb, sizeof(msgb), "[ERROR]" msg "", ##__VA_ARGS__); msgq_push(msgb);}while(0)
+    #endif // CEBEQ_DEBUG
+#endif // CEBEQ_COLOR
 
-#define UNREACHABLE(...) (eprintfn(__VA_ARGS__), assert(0))
+#define UNREACHABLE(...) (eprintf(__VA_ARGS__), assert(0))
+
+typedef struct{
+    const char *args[3];
+} thread_args_t;
 
 CBQLIB extern char program_dir[FILENAME_MAX];
 CBQLIB extern char exe_dir[FILENAME_MAX];
 CBQLIB extern char *long_path_buf;
+CBQLIB extern volatile int worker_done;
 
 CBQLIB bool setup(void);
 CBQLIB void cleanup(void);
 
-CBQLIB int make_backup(const char *branch_name, const char *dest, const char *parent);
+CBQLIB void* tbackup(void *args);
+CBQLIB void* tmerge(void *args);
+CBQLIB int backup(const char *branch_name, const char *dest, const char *parent);
 CBQLIB int merge(const char *src, const char *dest);
 
 CBQLIB bool get_exe_path(char *buffer, size_t buffer_size);

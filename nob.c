@@ -22,7 +22,7 @@ void append_head(Nob_Cmd *cmd)
 {
     nob_cmd_append(cmd, "gcc", "-I", "./include");
     nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow"); // definetly not cheating here..    
-    nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG"); // remove this in production build
+    //nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG"); // remove this in production build
 }
 
 void build_lib(Nob_Cmd *cmd)
@@ -31,9 +31,9 @@ void build_lib(Nob_Cmd *cmd)
     
     // Build core.o
     append_head(cmd);
-    nob_cmd_append(cmd, "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c", "src/cebeq.c");
+    nob_cmd_append(cmd, "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c", "src/cebeq.c", "src/threading.c", "src/message_queue.c");
 #ifdef _WIN32
-    nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-shared", "-o", "build/core.dll");
+    nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-D", "CEBEQ_COLOR", "-shared", "-o", "build/core.dll");
 #else
     nob_cmd_append(cmd, "-fPIC", "-shared", "-o", "build/libcore.so");
 #endif // _WIN32
@@ -69,7 +69,10 @@ void build_test(Nob_Cmd *cmd)
     nob_log(NOB_INFO, "Building test..");
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/test");
-    nob_cmd_append(cmd, "src/cebeq.c", "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c");
+    nob_cmd_append(cmd, "src/thread_test.c", "-Lbuild", "-lcore");
+#ifndef _WIN32
+    nob_cmd_append(cmd, "-Wl,-rpath,build");
+#endif // _WIN32
     nob_cmd_run_sync_and_reset(cmd);
 }
 

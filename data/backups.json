@@ -2,14 +2,14 @@
     "version": "0.0.1",
     "backups": {
         "content": {
-            "last_id": 14,
+            "last_id": 32,
             "dirs": [
                 "c:/users/constantijn/desktop",
                 "d:/cdemeer/geoguessr" 
             ] 
         },
         "testing": {
-            "last_id": 20,
+            "last_id": 22,
             "dirs": [
                 "C:/Users/constantijn/AppData/Local/Temp" 
             ] 

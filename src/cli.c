@@ -5,12 +5,15 @@
 #include <cebeq.h>
 #include <cwalk.h>
 #include <cson.h>
+#include <threading.h>
+#include <message_queue.h>
 
 typedef enum{
     Cmd_None, Cmd_Backup, Cmd_Merge, Cmd_Branch
 } Cmd;
 
 static char *version = "";
+static thread_t worker_thread;
 
 #define shift_args(argc, argv) _shift_args(&argc, &argv)
 char* _shift_args(int *argc, char ***argv)
@@ -106,18 +109,20 @@ void print_version(const char *program_name)
     printf("%s - version %s\n", program_name, version);
 }
 
-int run_backup(const char *args[])
+void run(thread_fn fn, thread_args_t args)
 {
-    int ret = make_backup(args[0], args[1], args[2]);
-    cleanup();
-    return ret;
-}
-
-int run_merge(const char *args[])
-{
-    int ret = merge(args[0], args[1]);
-    cleanup();
-    return ret;
+    msgq_init();
+    thread_create(&worker_thread, fn, &args);
+    char msg[256];
+    while (true){
+        bool got_msg = false;
+        while (msgq_pop(msg, sizeof(msg))){
+            printf("%s\n", msg);
+            got_msg = true;
+        }
+        if (worker_done && !got_msg) break;
+    }
+    msgq_destroy();
 }
 
 int main(int argc, char **argv)
@@ -129,19 +134,19 @@ int main(int argc, char **argv)
     
     Cson *info = cson_read(info_path);
     if (info == NULL){
-        eprintfn("Could not find internal info file!");
+        eprintf("Could not find internal info file!\n");
         return 1;
     }
     version = cson_get_string(info, key("version")).value;
     if (version == NULL){
-        eprintfn("Invalid info file state!");
+        eprintf("Invalid info file state!\n");
         return 1;
     }
     
     const char *program_name = shift_args(argc, argv);
     Cmd current_command = Cmd_None;
     
-    const char *command_options[3] = {0};
+    thread_args_t command_options;
     size_t command_option_count = 0;
 
     if (argc < 1){
@@ -187,7 +192,7 @@ int main(int argc, char **argv)
                         print_backup_usage(program_name);
                         return 1;
                     }
-                    command_options[command_option_count++] = arg;
+                    command_options.args[command_option_count++] = arg;
                 }
             } break;
             case Cmd_Merge:{
@@ -201,7 +206,7 @@ int main(int argc, char **argv)
                         print_merge_usage(program_name);
                         return 1;
                     }
-                    command_options[command_option_count++] = arg;
+                    command_options.args[command_option_count++] = arg;
                 }
             } break;
             case Cmd_Branch: {
@@ -231,7 +236,7 @@ int main(int argc, char **argv)
                     return 1;
                 }
             } break;
-            default: UNREACHABLE("Invalid Cmd type\n");
+            default: {assert(0 && "Invalid Cmd type\n");};
         }
     }
     switch (current_command){
@@ -241,7 +246,7 @@ int main(int argc, char **argv)
                 print_backup_usage(program_name);
                 return 1;
             }
-            return run_backup(command_options);
+            run(tbackup, command_options);
         }break;
         case Cmd_Merge:{
             if (command_option_count < 2){
@@ -249,13 +254,13 @@ int main(int argc, char **argv)
                 print_merge_usage(program_name);
                 return 1;
             }
-            return run_merge(command_options);
+            run(tmerge, command_options);
         }break;
         case Cmd_Branch:{
             print_branch_usage(program_name);
         } break;
-        default: UNREACHABLE("Invalid Cmd type\n\n");
+        default: {assert(0 && "Invalid Cmd type\n\n");};
     }
-    
+    cleanup();
     return 0;
 }
