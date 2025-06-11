@@ -55,6 +55,6 @@ CBQLIB int merge(const char *src, const char *dest);
 
 CBQLIB bool get_exe_path(char *buffer, size_t buffer_size);
 CBQLIB bool get_parent_dir(const char *path, char *buffer, size_t buffer_size);
-CBQLIB void norm_path(const char *path, char *buffer, size_t buffer_size); // cwk_path_normalize but with unix-style seperators forced
+CBQLIB void escape_string(const char *string, char *buffer, size_t buffer_size);
 
 #endif // _CEBEQ_H

@@ -31,9 +31,7 @@ bool setup(void)
         return false;
     }
     (void) get_parent_dir(program_dir, exe_dir, sizeof(exe_dir));
-    dprintfn("exe_dir: '%s'", exe_dir);
     (void) get_parent_dir(exe_dir, program_dir, sizeof(program_dir));
-    dprintfn("program_dir: '%s'", program_dir);
     return true;
 }
 
@@ -43,26 +41,22 @@ void cleanup(void)
     long_path_buf = NULL;
 }
 
-void convert_seperators(const char *path, char *buffer, size_t buffer_size)
+void escape_string(const char *string, char *buffer, size_t buffer_size)
 {
-    if (path == NULL || buffer == NULL) return;
-    size_t pos_out = 0;
-    size_t pos_in = 0;
-    char c;
-    while (pos_out < buffer_size && (c = path[pos_in++]) != '\0'){
+    if (string == NULL || buffer == NULL || buffer_size == 0) return;
+    size_t ri = 0;
+    size_t wi = 0;
+    while (string[ri] != '\0' && wi < buffer_size - 1){
+        char c = string[ri++];
         if (c == '\\') {
-            buffer[pos_out++] = '/';
-        } else{
-            buffer[pos_out++] = c;
+            if (wi + 2 > buffer_size) break;
+            buffer[wi++] = '\\';
+            buffer[wi++] = '\\';
+        } else {
+            buffer[wi++] = c;
         }
     }
-    buffer[pos_out] = '\0';
-}
-
-void norm_path(const char *path, char *buffer, size_t buffer_size)
-{
-    //convert_seperators(path, buffer, buffer_size);
-    cwk_path_normalize(path, buffer, buffer_size);
+    buffer[wi] = '\0';
 }
 
 bool get_exe_path(char *buffer, size_t buffer_size)
@@ -79,7 +73,7 @@ bool get_exe_path(char *buffer, size_t buffer_size)
     fprintf(stderr, "[ERROR] %s:%d:%s: Unsupported platform!\n", __LINE__, __FILE__, __func__);
     return false;
 #endif 
-    norm_path(buffer, buffer, buffer_size);
+    cwk_path_normalize(buffer, buffer, buffer_size);
     return true;
 }
 

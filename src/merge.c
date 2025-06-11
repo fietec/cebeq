@@ -53,10 +53,10 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
             Cson *info_item = cson_map_get(files, cson_str(entry.name));
             if (info_item == NULL) continue;
             int64_t mod_time = cson_get_int(info_item);
-            if (mod_time <= 0) continue;
-            
-            cwk_path_join(dest, entry.name, item_dest_path, FILENAME_MAX);
-            (void) copy_file(entry.path, item_dest_path);
+            if (mod_time > 0){
+                cwk_path_join(dest, entry.name, item_dest_path, FILENAME_MAX);
+                (void) copy_file(entry.path, item_dest_path);
+            }
             cson_map_remove(files, cson_str(entry.name));
         }
         else if (entry.type == FLIB_DIR){
@@ -106,9 +106,13 @@ int merge_root(const char *src, const char *dest)
     
     char info_path[FILENAME_MAX] = {0};
     cwk_path_join(src, INFO_FILE, info_path, FILENAME_MAX);
+    if (!flib_isfile(info_path)){
+        eprintfn("Could not find backup info file '%s'!", info_path);
+        return_defer(1);
+    }
     Cson *info = cson_read(info_path);
     if (info == NULL){
-        eprintfn("Could not find backup info file '%s'!", info_path);
+        eprintfn("Could not read backup info file '%s'!", info_path);
         return_defer(1);
     }
     

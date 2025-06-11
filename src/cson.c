@@ -819,6 +819,7 @@ bool cson_lex_next(CsonLexer *lexer, CsonToken *token)
                 cson_lex_set_token(token, CsonToken_Float, t_start, t_end, t_loc);
                 return true;
             }
+            cson_error(CsonError_InvalidType, "Invalid literal, len:%d, %d", (int) t_len, (int) *t_start);
             cson_error(CsonError_InvalidType, "Invalid literal \"%.*s\" at "CSON_LOC_FMT, (int)t_len, t_start, cson_loc_expand(t_loc));
             cson_lex_set_token(token, CsonToken_Invalid, t_start, t_end, t_loc);
             return false;
@@ -1107,6 +1108,26 @@ Cson* cson_parse_buffer(char *buffer, size_t buffer_size, char *filename)
     return cson;
 }
 
+size_t cson__read_file(FILE *file, char *buffer, size_t buffer_size) {
+    size_t total = 0;
+    int prev = 0;
+
+    while (total < buffer_size - 1) {
+        int c = fgetc(file);
+        if (c == EOF) break;
+
+        if (prev == '\r' && c == '\n') {
+            buffer[total - 1] = '\n'; // Replace \r with \n
+        } else {
+            buffer[total++] = (char)c;
+        }
+        prev = c;
+    }
+
+    buffer[total] = '\0';
+    return total;
+}
+
 Cson* cson_read(char *filename){
     FILE *file = fopen(filename, "r");
     if (file == NULL){
@@ -1116,7 +1137,7 @@ Cson* cson_read(char *filename){
     uint64_t file_size = cson_file_size(filename);
     char *file_content = (char*) calloc(file_size+1, sizeof(*file_content));
     cson_assert_alloc(file_content);
-    fread(file_content, 1, file_size, file);
+    (void) cson__read_file(file, file_content, file_size+1);
     fclose(file);
     Cson *cson = cson_parse_buffer(file_content, file_size, filename);
     free(file_content);

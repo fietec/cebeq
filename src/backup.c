@@ -8,6 +8,8 @@
 #include <cwalk.h>
 #include <flib.h>
 
+char temp_path_buffer[FILENAME_MAX];
+
 bool path_in_backup(const char *path, const char *backup)
 {
     if (path == NULL || backup == NULL) return false;
@@ -37,6 +39,9 @@ bool path_in_backup(const char *path, const char *backup)
 int make_backup_rec(const char *src, const char *dest, const char *prev)
 {
     int value = 0;
+    Cson *root = cson_map_new();
+    Cson *files = cson_map_new();
+    Cson *dirs = cson_map_new();
     DIR *dir = opendir(src);
     if (dir == NULL){
         if (!flib_exists(src)){
@@ -44,7 +49,7 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
             return 1;
         }
         eprintfn("Cannot access '%s'!. Skipping..", src);
-        return 0;
+        goto write;
     }
     if (!flib_isdir(dest)){
         eprintfn("This is no valid dest directory: '%s'!", dest);
@@ -75,10 +80,6 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
         }
     }
     
-    Cson *root = cson_map_new();
-    Cson *files = cson_map_new();
-    Cson *dirs = cson_map_new();
-    
     flib_entry entry;
     char item_dest_path[FILENAME_MAX] = {0};
     char item_prev_path[FILENAME_MAX] = {0};
@@ -106,7 +107,7 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
                 copy_file(entry.path, item_dest_path);
             } break;
             case FLIB_DIR:{
-                if (access(entry.path, X_OK) != 0){
+                if (access(entry.path, R_OK) != 0){
                     eprintfn("No permission for '%s'! Skipping.", entry.path);
                     continue;
                 }
@@ -149,7 +150,7 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
             cson_map_insert(dirs, del_dir, cson_new_int(-1));
         }
     }
-    
+  write:  
     cson_map_insert(root, cson_str_new("files"), files);
     cson_map_insert(root, cson_str_new("dirs"), dirs);
     char parent[FILENAME_MAX] = {0};
@@ -157,7 +158,8 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
         cson_map_insert(root, cson_str_new("parent"), cson_new_null());
     } else{
         cwk_path_normalize(prev, parent, FILENAME_MAX);
-        cson_map_insert(root, cson_str_new("parent"), cson_new_cstring((char*) parent));
+        escape_string(parent, temp_path_buffer, sizeof(temp_path_buffer));
+        cson_map_insert(root, cson_str_new("parent"), cson_new_cstring((char*) temp_path_buffer));
     }
     cwk_path_join(dest, INFO_FILE, item_dest_path, FILENAME_MAX);
     if (!cson_write(root, item_dest_path)) return_defer(1);
@@ -259,8 +261,10 @@ int make_backup(const char *branch_name, const char *dest, const char *parent)
     cson_map_insert(root, cson_str("dirs"), dirs);
     char parent_norm[FILENAME_MAX] = {0};
     if (parent != NULL){
-        cwk_path_normalize(parent, parent_norm, FILENAME_MAX);
-        cson_map_insert(root, cson_str("parent"), cson_new_string(cson_str((char*)parent_norm)));
+        cwk_path_normalize(parent, parent_norm, sizeof(parent_norm));
+        escape_string(parent_norm, temp_path_buffer, sizeof(temp_path_buffer));
+        dprintfn("'%s' -> '%s'", parent, temp_path_buffer);
+        cson_map_insert(root, cson_str("parent"), cson_new_string(cson_str((char*)temp_path_buffer)));
     } else{
         cson_map_insert(root, cson_str("parent"), cson_new_null());
     }
