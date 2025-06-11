@@ -70,7 +70,7 @@ void build_test(Nob_Cmd *cmd)
     nob_log(NOB_INFO, "Building test..");
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/test");
-    nob_cmd_append(cmd, "src/thread_test.c", "-Lbuild", "-lcore");
+    nob_cmd_append(cmd, "testing/thread_test.c", "-Lbuild", "-lcore");
 #ifndef _WIN32
     nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32

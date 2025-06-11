@@ -38,6 +38,7 @@ Clay_RenderCommandArray create_layout(){
 }
 
 int main(void) {
+    if (!setup()) return 1;
     Clay_Raylib_Initialize(1024, 768, "Clay Testing", FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
 
     uint64_t clayRequiredMemory = Clay_MinMemorySize();
@@ -46,6 +47,7 @@ int main(void) {
        .width = GetScreenWidth(),
        .height = GetScreenHeight()
     }, (Clay_ErrorHandler) { HandleClayErrors, NULL}); 
+    Font fonts[_FontId_Count];
     fonts[BODY_16] = LoadFontEx("resources/Roboto-Regular.ttf", 16, NULL, 400);
     SetTextureFilter(fonts[BODY_16].texture, TEXTURE_FILTER_BILINEAR);
     Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
@@ -71,9 +73,9 @@ int main(void) {
         Clay_RenderCommandArray renderCommands = create_layout();
         
         BeginDrawing();
-        ClearBackground(BLACK);
         Clay_Raylib_Render(renderCommands, fonts);
         EndDrawing();
     }
     Clay_Raylib_Close();
+    cleanup();
 }

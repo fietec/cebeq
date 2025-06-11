@@ -1,63 +1,69 @@
-# Makefile for building cli, gui, lib, test, all
+# Compiler and Flags
+CC = gcc
+CFLAGS = -I./include -std=gnu23 -Wall -Wextra -Werror -Wno-unused-value -Wno-stringop-overflow
+LDFLAGS = -Lbuild -lcore
+BUILD_DIR = build
 
-CC := gcc
-CFLAGS := -I./include -Wall -Wextra -Werror -Wno-unused-value -Wno-stringop-overflow
-LDFLAGS := -Lbuild -lcore
-BUILD_DIR := build
+# Source Files
+LIB_SRCS = src/backup.c src/merge.c src/cwalk.c src/cson.c src/flib.c src/cebeq.c src/threading.c src/message_queue.c
+CLI_SRC = src/cli.c
+GUI_SRC = src/gui.c
+TEST_SRC = testing/thread_test.c
 
+# Platform-specific options
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-    SHARED := -fPIC -shared
-    LIB_NAME := libcore.so
-    RPATH := -Wl,-rpath,$(BUILD_DIR)
+    LIB_TARGET = $(BUILD_DIR)/libcore.so
+    RPATH = -Wl,-rpath,build
+    GUI_LIBS = -lraylib -lm -ldl -lpthread
 else ifeq ($(OS),Windows_NT)
-    SHARED := -shared
-    LIB_NAME := core.dll
-    RPATH :=
+    LIB_TARGET = $(BUILD_DIR)/core.dll
+    CFLAGS += -DCEBEQ_EXPORT -DCEBEQ_COLOR
+    GUI_LIBS = -lraylib -lgdi32 -lwinmm
+else
+    LIB_TARGET = $(BUILD_DIR)/libcore.so
+    RPATH = -Wl,-rpath,build
+    GUI_LIBS = -lraylib
 endif
 
-SRC_LIB := src/backup.c src/merge.c src/cwalk.c src/cson.c src/flib.c src/cebeq.c
-SRC_CLI := src/cli.c
-SRC_GUI := src/gui.c
-
-.PHONY: all lib cli gui test help clean
+# Targets
+.PHONY: all lib cli gui test clean help
 
 all: lib cli gui
 
-lib: $(BUILD_DIR)/$(LIB_NAME)
+lib: $(LIB_TARGET)
 
-$(BUILD_DIR)/$(LIB_NAME): $(SRC_LIB) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(SRC_LIB) $(SHARED) -o $(BUILD_DIR)/$(LIB_NAME)
+$(LIB_TARGET): $(LIB_SRCS)
+	@mkdir -p $(BUILD_DIR)
+ifeq ($(UNAME_S),Linux)
+	$(CC) $(CFLAGS) -fPIC -shared $^ -o $@
+else
+	$(CC) $(CFLAGS) -shared $^ -o $@
+endif
 
-cli: $(BUILD_DIR)/cli
+cli: lib
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(CLI_SRC) $(LDFLAGS) $(RPATH) -o $(BUILD_DIR)/cli
 
-$(BUILD_DIR)/cli: $(SRC_CLI) lib
-	$(CC) $(CFLAGS) $(SRC_CLI) $(LDFLAGS) $(RPATH) -o $(BUILD_DIR)/cli
+gui: lib
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(GUI_SRC) $(LDFLAGS) -Llib $(GUI_LIBS) $(RPATH) -o $(BUILD_DIR)/gui
 
-gui: $(BUILD_DIR)/gui
-
-$(BUILD_DIR)/gui: $(SRC_GUI) lib
-	$(CC) $(CFLAGS) $(SRC_GUI) $(LDFLAGS) $(RPATH) -o $(BUILD_DIR)/gui
-
-test: $(BUILD_DIR)/test
-
-$(BUILD_DIR)/test: $(SRC_LIB)
-	$(CC) $(CFLAGS) $(SRC_LIB) -o $(BUILD_DIR)/test
-
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
-
-help:
-	@echo "Usage: make <target>"
-	@echo
-	@echo "Targets:"
-	@echo "  cli     Build the CLI application"
-	@echo "  gui     Build the GUI application"
-	@echo "  lib     Build the core functionality library"
-	@echo "  all     Build lib, cli, and gui"
-	@echo "  test    Build the test executable"
-	@echo "  help    Show this help message"
-	@echo "  clean   Remove build artifacts"
+test: lib
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(TEST_SRC) $(LDFLAGS) $(RPATH) -o $(BUILD_DIR)/test
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+help:
+	@echo "Usage: make <target>"
+	@echo ""
+	@echo "Targets:"
+	@echo "  cli      Build the cli"
+	@echo "  gui      Build the gui"
+	@echo "  lib      Build the core functionality lib"
+	@echo "  all      Build all components (lib, cli, gui)"
+	@echo "  test     Build the current test"
+	@echo "  clean    Remove build artifacts"
+	@echo "  help     Show this message"

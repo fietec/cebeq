@@ -41,6 +41,7 @@ void cleanup(void)
 {
     free(long_path_buf);
     long_path_buf = NULL;
+    cson_free();
 }
 
 void escape_string(const char *string, char *buffer, size_t buffer_size)
