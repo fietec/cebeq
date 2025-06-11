@@ -21,6 +21,7 @@ void print_usage(const char *program_name)
 void append_head(Nob_Cmd *cmd)
 {
     nob_cmd_append(cmd, "gcc", "-I", "./include");
+    nob_cmd_append(cmd, "-std=gnu23");
     nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow"); // definetly not cheating here..    
     //nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG"); // remove this in production build
 }
@@ -57,7 +58,7 @@ void build_gui(Nob_Cmd *cmd)
     nob_log(NOB_INFO, "Building gui..");
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/gui");
-    nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore");
+    nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore", "-Llib", "-lraylib", "-lgdi32", "-lwinmm");
 #ifndef _WIN32
     nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
@@ -78,9 +79,9 @@ void build_test(Nob_Cmd *cmd)
 
 void build_all(Nob_Cmd *cmd)
 {
-    // TODO: add gui target
     build_lib(cmd);
     build_cli(cmd);
+    build_gui(cmd);
 }
 
 int main(int argc, char **argv)

@@ -86,7 +86,7 @@ int print_branches(Cson *branches)
         return 1;
     }
     size_t len = cson_len(branch_names);
-    printf("Currently, there are %u branches:\n", len);
+    printf("Currently, there are %zu branches:\n", len);
     for (size_t i=0; i<len; ++i){
         CsonStr key = cson_get_string(branch_names, index(i));
         Cson *dirs = cson_get(branches, key(key.value), key("dirs"));

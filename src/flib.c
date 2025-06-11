@@ -167,19 +167,22 @@ int copy_dir_rec(const char *src, const char *dest)
     struct dirent *entry;
     char item_src_path[FILENAME_MAX] = {0};
     char item_dest_path[FILENAME_MAX] = {0};
+    struct stat attr;
     while ((entry = readdir(dir)) != NULL){
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
         cwk_path_join(src, entry->d_name, item_src_path, FILENAME_MAX);
         cwk_path_join(dest, entry->d_name, item_dest_path, FILENAME_MAX);
-        switch (entry->d_type){
-            case DT_REG:{
-                copy_file(item_src_path, item_dest_path);
-            }break;
-            case DT_DIR:{
-                if (!create_dir(item_dest_path)) continue;
-                copy_dir_rec(item_src_path, item_dest_path);
-            }break;
-            default: break;
+        if (stat(item_src_path, &attr) == -1){
+            eprintf("Could not access '%s': %s\n", item_src_path, strerror(errno));
+            continue;
+        }
+        if (S_ISREG(attr.st_mode)){
+            copy_file(item_src_path, item_dest_path);
+        } else if (S_ISDIR(attr.st_mode)){
+            if (!create_dir(item_dest_path)) continue;
+            copy_dir_rec(item_src_path, item_dest_path);
+        }else{
+            break;
         }
     }
     closedir(dir);
@@ -197,6 +200,8 @@ int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore, 
         eprintf("Not a valid directory: '%s'!", src);
         return 1;
     }
+    
+    struct stat attr;
     struct dirent *entry;
     char item_src_path[FILENAME_MAX] = {0};
     char item_dest_path[FILENAME_MAX] = {0};
@@ -204,17 +209,20 @@ int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore, 
         for (size_t i=0; i<ignore_count; ++i){
             if (strcmp(entry->d_name, ignore[i]) == 0) continue;
         }
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
         cwk_path_join(src, entry->d_name, item_src_path, FILENAME_MAX);
         cwk_path_join(dest, entry->d_name, item_dest_path, FILENAME_MAX);
-        switch (entry->d_type){
-            case DT_REG:{
-                copy_file(item_src_path, item_dest_path);
-            }break;
-            case DT_DIR:{
-                if (!create_dir(item_dest_path)) continue;
-                copy_dir_rec(item_src_path, item_dest_path);
-            }break;
-            default: break;
+        if (stat(item_src_path, &attr) == -1){
+            eprintf("Could not access '%s': %s\n", item_src_path, strerror(errno));
+            continue;
+        }
+        if (S_ISREG(attr.st_mode)){
+            copy_file(item_src_path, item_dest_path);
+        } else if (S_ISDIR(attr.st_mode)){
+            if (!create_dir(item_dest_path)) continue;
+            copy_dir_rec(item_src_path, item_dest_path);
+        }else{
+            break;
         }
     }
     closedir(dir);
@@ -286,14 +294,14 @@ fsize_t flib_dir_size(DIR *dir, const char *dir_path)
     fsize_t size = 0;
     struct dirent *d_entry;
     char path[FILENAME_MAX] = {0};
+    struct stat attr;
     while ((d_entry = readdir(dir)) != NULL){
-        if (d_entry->d_type == DT_REG){
-            (void)cwk_path_join(dir_path, d_entry->d_name, path, sizeof(path));
-            struct stat attr;
-            if (stat(path, &attr) == -1){
-                eprintf("Could not access '%s': %s!", path, strerror(errno));
-                continue;
-            }
+        (void)cwk_path_join(dir_path, d_entry->d_name, path, sizeof(path));
+        if (stat(path, &attr) == -1){
+            eprintf("Could not access '%s': %s!", path, strerror(errno));
+            continue;
+        }
+        if (S_ISREG(attr.st_mode)){
             size += attr.st_size;
         }
     }
@@ -306,26 +314,23 @@ fsize_t flib_dir_size_rec(DIR *dir, const char *dir_path)
     fsize_t size = 0;
     struct dirent *d_entry;
     char path[FILENAME_MAX] = {0};
+    struct stat attr;
     while ((d_entry = readdir(dir)) != NULL){
         (void)cwk_path_join(dir_path, d_entry->d_name, path, sizeof(path));
-        switch (d_entry->d_type){
-            case DT_REG: {
-                struct stat attr;
-                if (stat(path, &attr) == -1){
-                    eprintf("Could not access file '%s': %s!", path, strerror(errno));
-                    continue;
-                }
-                size += attr.st_size;
-            } break;
-            case DT_DIR: {
-                DIR *sub_dir = opendir(path);
-                if (sub_dir == NULL){
-                    eprintf("Could not find dir '%s': %s!", path, strerror(errno));
-                    continue;
-                }
-                size += flib_dir_size_rec(sub_dir, path);
-                closedir(sub_dir);
-            } break;
+        if (stat(path, &attr) == -1){
+            eprintf("Could not access file '%s': %s!", path, strerror(errno));
+            continue;
+        }
+        if (S_ISREG(attr.st_mode)){
+            size += attr.st_size;
+        } else if (S_ISDIR(attr.st_mode)){
+            DIR *sub_dir = opendir(path);
+            if (sub_dir == NULL){
+                eprintf("Could not find dir '%s': %s!", path, strerror(errno));
+                continue;
+            }
+            size += flib_dir_size_rec(sub_dir, path);
+            closedir(sub_dir);
         }
     }
     return size;
