@@ -2,3 +2,4 @@ nob*
 nob.old*
 testing/*
 build/*
+*.a
