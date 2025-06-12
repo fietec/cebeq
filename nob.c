@@ -1,4 +1,5 @@
 #include <string.h>
+#include <sys/stat.h>
 
 #define NOB_IMPLEMENTATION
 #include "nob.h"
@@ -56,6 +57,13 @@ void build_cli(Nob_Cmd *cmd)
 void build_gui(Nob_Cmd *cmd)
 {
     nob_log(NOB_INFO, "Building gui..");
+    const char *raylib_path = "lib/libraylib.a";
+    struct stat attr;
+    if (stat("lib/libraylib.a", &attr) == -1){
+        nob_log(NOB_ERROR, "Raylib static library not found at at %s.", raylib_path);
+        nob_log(NOB_ERROR, "Please provide a built raylib lib in that location to procede.");
+        return;
+    }
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/gui");
     nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore", "-Llib", "-lraylib", "-lgdi32", "-lwinmm");
