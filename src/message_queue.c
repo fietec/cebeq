@@ -4,9 +4,6 @@
 #include <message_queue.h>
 #include <threading.h>
 
-#define MAX_QUEUE 100
-#define MAX_MSG_LEN 256
-
 static char queue[MAX_QUEUE][MAX_MSG_LEN];
 static int head = 0, tail = 0;
 static mutex_t lock;

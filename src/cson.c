@@ -3,6 +3,8 @@
 static CsonArena cson_default_arena = {0};
 CsonArena *cson_current_arena = &cson_default_arena;
 
+char cson_temp_buffer[256] = {0};
+
 
 Cson* cson__get(Cson *cson, CsonArg args[], size_t count)
 {
@@ -673,7 +675,8 @@ void cson_fprint(Cson *value, FILE *file, size_t indent)
             fprintf(file, "%s", value->value.boolean? "true":"false");
         }break; 
         case Cson_String:{
-            fprintf(file, "\"%s\"", value->value.string.value);
+            escape_string(value->value.string.value, cson_temp_buffer, sizeof(cson_temp_buffer));
+            fprintf(file, "\"%s\"", cson_temp_buffer);
         }break;
         case Cson_Null:{
             fprintf(file, "null");
@@ -886,6 +889,7 @@ bool cson_lex_extract(CsonToken *token, char *buffer, size_t buffer_size)
 void cson_lex_print(CsonToken token)
 {
     cson_info(CSON_LOC_FMT": %s: '%.*s'\n", cson_loc_expand(token.loc), CsonTokenTypeNames[token.type], (int)(token.t_end-token.t_start), token.t_start);
+    (void) token;
 }
 
 void cson_lex_set_token(CsonToken *token, CsonTokenType type, char *t_start, char *t_end, CsonLoc loc)

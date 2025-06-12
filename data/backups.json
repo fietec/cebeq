@@ -1,23 +1,29 @@
 {
-    "version": "0.0.1",
-    "backups": {
+    "version": "0.0.2",
+    "branches": {
         "content": {
-            "last_id": 32,
+            "last_id": 0,
             "dirs": [
                 "c:/users/constantijn/desktop",
                 "d:/cdemeer/geoguessr" 
+            ],
+            "backups": [
             ] 
         },
         "testing": {
-            "last_id": 22,
+            "last_id": 0,
             "dirs": [
                 "C:/Users/constantijn/AppData/Local/Temp" 
+            ],
+            "backups": [
             ] 
         },
         "geoguessr": {
-            "last_id": 3,
+            "last_id": 0,
             "dirs": [
                 "d:/cdemeer/geoguessr" 
+            ],
+            "backups": [
             ] 
         } 
     } 

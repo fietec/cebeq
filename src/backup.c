@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <stdatomic.h>
+#include <time.h>
 
 #include <cebeq.h>
 #include <cson.h>
@@ -10,6 +11,12 @@
 #include <flib.h>
 
 char temp_path_buffer[FILENAME_MAX];
+
+void format_time(time_t *rawtime, char *buffer, size_t buffer_size){
+    struct tm * timeinfo;
+    timeinfo = localtime(rawtime);
+    snprintf(buffer, buffer_size-1, "%d/%d/%d %02d:%02d:%02d", timeinfo->tm_year + 1900, timeinfo->tm_mon + 1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+}
 
 bool path_in_backup(const char *path, const char *backup)
 {
@@ -207,6 +214,7 @@ int backup(const char *branch_name, const char *dest, const char *parent)
         return 1;
     }
     int value = 0;
+    time_t start_time = time(NULL);
     
     CsonArena arena = {0};
     CsonArena *prev_arena = cson_current_arena;
@@ -215,13 +223,13 @@ int backup(const char *branch_name, const char *dest, const char *parent)
     char backups_path[FILENAME_MAX];
     cwk_path_join(program_dir, BACKUPS_JSON, backups_path, sizeof(backups_path));
     
-    Cson *backups = cson_read(backups_path);
-    if (backups == NULL){
+    Cson *branches = cson_read(backups_path);
+    if (branches == NULL){
         eprintf("Could not find backups file '%s'!", backups_path);
         return_defer(1);
     }
 
-    Cson *branch = cson_get(backups, key("backups"), key((char*) branch_name));
+    Cson *branch = cson_get(branches, key("branches"), key((char*) branch_name));
     if (branch == NULL){
         eprintf("Could not find a branch with name '%s'!", branch_name);
         return_defer(1);
@@ -258,14 +266,27 @@ int backup(const char *branch_name, const char *dest, const char *parent)
         }
     }
     last_id->value.integer = id;
+    Cson *backups = cson_get(branch, key("backups"));
+    if (backups == NULL){
+        Cson *new_backups = cson_array_new();
+        cson_array_push(new_backups, cson_new_cstring(dest_path));
+        cson_map_insert(branch, cson_str("backups"), new_backups);
+    } else{
+        cson_array_push(backups, cson_new_cstring(dest_path));
+    }
     // write backup info file
+    char time_buffer[32] = {0};
+    format_time(&start_time, time_buffer, sizeof(time_buffer));
+    
     Cson *root = cson_map_new();
     cson_map_insert(root, cson_str("dirs"), dirs);
+    cson_map_insert(root, cson_str("branch"), cson_new_cstring((char*) branch_name));
+    cson_map_insert(root, cson_str("created"), cson_new_cstring(time_buffer));
+    
     char parent_norm[FILENAME_MAX] = {0};
     if (parent != NULL){
         cwk_path_normalize(parent, parent_norm, sizeof(parent_norm));
         escape_string(parent_norm, temp_path_buffer, sizeof(temp_path_buffer));
-        dprintf("'%s' -> '%s'", parent, temp_path_buffer);
         cson_map_insert(root, cson_str("parent"), cson_new_string(cson_str((char*)temp_path_buffer)));
     } else{
         cson_map_insert(root, cson_str("parent"), cson_new_null());
@@ -273,8 +294,8 @@ int backup(const char *branch_name, const char *dest, const char *parent)
     cwk_path_join(dest_path, INFO_FILE, dest_name, FILENAME_MAX);
     cson_write(root, dest_name);
     
-    cson_write(backups, backups_path);
-    
+    cson_write(branches, backups_path);
+    escape_string(dest_path, temp_path_buffer, sizeof(temp_path_buffer));
     iprintf("Successfully created backup for branch '%s' at '%s'", branch_name, dest_path);
   defer:
     cson_swap_and_free_arena(prev_arena);

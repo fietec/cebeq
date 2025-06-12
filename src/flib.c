@@ -283,7 +283,6 @@ bool flib_get_entry(DIR *dir, const char *dir_path, flib_entry *entry)
     }
     else{
         entry->type = FLIB_UNSP;
-        dprintf("'%s' is of unsupported type: %u!", entry->path, d_entry->d_type);
     }
     return true;
 }

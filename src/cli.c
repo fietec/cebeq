@@ -70,7 +70,7 @@ void print_branch_usage(const char *program_name)
     printf("Usage: %s branch <command> [OPTIONS]\n\n", program_name);
     
     printf("Commands:\n");
-    printf("  list                  List all available branches\n");
+    printf("  list [branch]         List all available branches or all backups of specified branch\n");
     printf("  new <name> <dirs>...  Create a new branch\n");
     printf("  delete <name>         Delete a branch\n\n");
     
@@ -113,7 +113,7 @@ void run(thread_fn fn, thread_args_t args)
 {
     msgq_init();
     thread_create(&worker_thread, fn, &args);
-    char msg[256];
+    char msg[MAX_MSG_LEN];
     while (true){
         bool got_msg = false;
         while (msgq_pop(msg, sizeof(msg))){
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
     const char *program_name = shift_args(argc, argv);
     Cmd current_command = Cmd_None;
     
-    thread_args_t command_options;
+    thread_args_t command_options = {0};
     size_t command_option_count = 0;
 
     if (argc < 1){
@@ -211,10 +211,47 @@ int main(int argc, char **argv)
             } break;
             case Cmd_Branch: {
                 if (strcmp(arg, "list") == 0){
-                    Cson *branches = cson_get(info, key("backups"));
+                    Cson *branches = cson_get(info, key("branches"));
                     if (!cson_is_map(branches)){
                         fprintf(stderr, "[ERROR] Invalid info file state!\n");
                         return 1;
+                    }
+                    if (argc > 0){
+                        arg = shift_args(argc, argv);
+                        Cson *branch = cson_get(branches, key((char*) arg));
+                        if (!cson_is_map(branch)){
+                            fprintf(stderr, "[ERROR] Unknown branch '%s'!\n", arg);
+                            fprintf(stdout, "Use '%s branch list' to see a list of all branches.\n", program_name);
+                            return 1;
+                        }
+                        Cson *backups = cson_get(branch, key("backups"));
+                        if (!cson_is_array(backups) || cson_len(backups) == 0){
+                            fprintf(stdout, "Currently, there are no backups for branch '%s'.\n", arg);
+                            return 0;
+                        }
+                        size_t len = cson_len(backups);
+                        fprintf(stdout, "Currently, there are %zu backups for branch '%s':\n", len, arg);
+                        char backup_info_path[FILENAME_MAX] = {0};
+                        for (size_t i=0; i<len; ++i){
+                            char *backup = cson_get_cstring(backups, index(i));
+                            if (backup != NULL){
+                                cwk_path_join(backup, INFO_FILE, backup_info_path, sizeof(backup_info_path));
+                                Cson *backup_info = cson_read(backup_info_path);
+                                if (!cson_is_map(backup_info)){
+                                    fprintf(stdout, " - --invalid backup--\n");
+                                } else{
+                                    char *time_created = cson_get_cstring(backup_info, key("created"));
+                                    if (time_created != NULL){
+                                        fprintf(stdout, " - %s, created at %s\n", backup, time_created);
+                                    }else{
+                                        fprintf(stdout, " - %s\n", backup);
+                                    }
+                                }
+                            }else {
+                                fprintf(stdout, " - --null--\n");
+                            }
+                        }
+                        return 0;
                     }
                     return print_branches(branches);
                 }
