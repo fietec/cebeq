@@ -127,7 +127,8 @@ void run(thread_fn fn, thread_args_t args)
 
 int main(int argc, char **argv)
 {
-    if (!setup()) return 1;
+    int value = 0;
+    if (!setup()) return_defer(1);
     
     char info_path[FILENAME_MAX] = {0};
     cwk_path_join(program_dir, "data/backups.json", info_path, sizeof(info_path));
@@ -135,12 +136,12 @@ int main(int argc, char **argv)
     Cson *info = cson_read(info_path);
     if (info == NULL){
         eprintf("Could not find internal info file!\n");
-        return 1;
+        return_defer(1);
     }
     version = cson_get_string(info, key("version")).value;
     if (version == NULL){
         eprintf("Invalid info file state!\n");
-        return 1;
+        return_defer(1);
     }
     
     const char *program_name = shift_args(argc, argv);
@@ -152,7 +153,7 @@ int main(int argc, char **argv)
     if (argc < 1){
         fprintf(stderr, "[ERROR] No arguments provided!\n\n");
         print_usage(program_name);
-        return 1;
+        return_defer(1);
     }
     while (argc > 0){
         const char *arg = shift_args(argc, argv);
@@ -160,11 +161,11 @@ int main(int argc, char **argv)
             case Cmd_None:{
                 if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0){
                     print_usage(program_name);
-                    return 0;
+                    return_defer(0);
                 }
                 if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0){
                     print_version(program_name);
-                    return 0;
+                    return_defer(0);
                 }
                 if (strcmp(arg, "backup") == 0){
                     current_command = Cmd_Backup;
@@ -178,19 +179,19 @@ int main(int argc, char **argv)
                 else{
                     fprintf(stderr, "[ERROR] Unknown argument: '%s'!\n\n", arg);
                     print_usage(program_name);
-                    return 1;
+                    return_defer(1);
                 }
             } break;
             case Cmd_Backup:{
                 if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0){
                     print_backup_usage(program_name);
-                    return 0;
+                    return_defer(0);
                 }
                 else{
                     if (command_option_count >= 3){
                         fprintf(stderr, "[ERROR] Unknown argument: '%s'!\n\n", arg);
                         print_backup_usage(program_name);
-                        return 1;
+                        return_defer(1);
                     }
                     command_options.args[command_option_count++] = arg;
                 }
@@ -198,13 +199,13 @@ int main(int argc, char **argv)
             case Cmd_Merge:{
                 if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0){
                     print_merge_usage(program_name);
-                    return 0;
+                    return_defer(0);
                 }
                 else{
                     if (command_option_count >= 2){
                         fprintf(stderr, "[ERROR] Unknown argument: '%s'!\n\n", arg);
                         print_merge_usage(program_name);
-                        return 1;
+                        return_defer(1);
                     }
                     command_options.args[command_option_count++] = arg;
                 }
@@ -214,7 +215,7 @@ int main(int argc, char **argv)
                     Cson *branches = cson_get(info, key("branches"));
                     if (!cson_is_map(branches)){
                         fprintf(stderr, "[ERROR] Invalid info file state!\n");
-                        return 1;
+                        return_defer(1);
                     }
                     if (argc > 0){
                         arg = shift_args(argc, argv);
@@ -222,12 +223,12 @@ int main(int argc, char **argv)
                         if (!cson_is_map(branch)){
                             fprintf(stderr, "[ERROR] Unknown branch '%s'!\n", arg);
                             fprintf(stdout, "Use '%s branch list' to see a list of all branches.\n", program_name);
-                            return 1;
+                            return_defer(1);
                         }
                         Cson *backups = cson_get(branch, key("backups"));
                         if (!cson_is_array(backups) || cson_len(backups) == 0){
                             fprintf(stdout, "Currently, there are no backups for branch '%s'.\n", arg);
-                            return 0;
+                            return_defer(0);
                         }
                         size_t len = cson_len(backups);
                         fprintf(stdout, "Currently, there are %zu backups for branch '%s':\n", len, arg);
@@ -251,25 +252,25 @@ int main(int argc, char **argv)
                                 fprintf(stdout, " - --null--\n");
                             }
                         }
-                        return 0;
+                        return_defer(0);
                     }
-                    return print_branches(branches);
+                    return_defer(print_branches(branches));
                 }
                 else if (strcmp(arg, "new") == 0){
                     if (argc < 2){
                         fprintf(stderr, "[ERROR] Missing arguments!\n");
                         print_branch_usage(program_name);
-                        return 1;
+                        return_defer(1);
                     }
                     Cson *branches = cson_get(info, key("branches"));
                     if (!cson_is_map(branches)){
                         fprintf(stderr, "[ERROR] Invalid info file state!\n");
-                        return 1;
+                        return_defer(1);
                     }
                     const char *name = shift_args(argc, argv);
                     if (cson_map_iskey(branches, cson_str((char*) name))){
                         fprintf(stderr, "[ERROR] Branch already exists!\n");
-                        return 1;
+                        return_defer(1);
                     }
                     Cson *branch = cson_map_new();
                     Cson *dirs = cson_array_new();
@@ -287,41 +288,41 @@ int main(int argc, char **argv)
                     
                     cson_write(info, info_path);
                     fprintf(stdout, "[INFO] Successfully created new branch '%s'!", name);
-                    return 0;
+                    return_defer(0);
                 }
                 else if (strcmp(arg, "delete") == 0){
                     if (argc < 1){
                         fprintf(stderr, "[ERROR] Missing argument!\n");
                         print_branch_usage(program_name);
-                        return 1;
+                        return_defer(1);
                     }
                     Cson *branches = cson_get(info, key("branches"));
                     if (!cson_is_map(branches)){
                         fprintf(stderr, "[ERROR] Invalid info file state!\n");
-                        return 1;
+                        return_defer(1);
                     }
                     char *name = (char*) shift_args(argc, argv);
                     CsonError error = cson_map_remove(branches, cson_str(name));
                     if (error == CsonError_KeyError){
                         fprintf(stderr, "[ERROR] This branch does not exist: '%s'!\n", name);
-                        return 1;
+                        return_defer(1);
                     }else if (error == CsonError_Success){
                         cson_write(info, info_path);
                         fprintf(stdout, "[INFO] Successfully deleted branch '%s'!\n", name);
-                        return 0;
+                        return_defer(0);
                     }else{
                         fprintf(stderr, "[ERROR] An error occured while deleting branch '%s': %s!\n", name, CsonErrorStrings[error]);
-                        return 1;
+                        return_defer(1);
                     }
                 }
                 else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0){
                     print_branch_usage(program_name);
-                    return 0;
+                    return_defer(0);
                 }
                 else{
                     fprintf(stderr, "[ERROR] Unknown option: '%s'!\n", arg);
                     print_branch_usage(program_name);
-                    return 1;
+                    return_defer(1);
                 }
             } break;
             default: {assert(0 && "Invalid Cmd type\n");};
@@ -332,7 +333,7 @@ int main(int argc, char **argv)
             if (command_option_count < 2){
                 fprintf(stderr, "[ERROR] Too few arguments provided!\n\n");
                 print_backup_usage(program_name);
-                return 1;
+                return_defer(1);
             }
             run(tbackup, command_options);
         }break;
@@ -340,7 +341,7 @@ int main(int argc, char **argv)
             if (command_option_count < 2){
                 fprintf(stderr, "[ERROR] Too few arguments provided!\n\n");
                 print_merge_usage(program_name);
-                return 1;
+                return_defer(1);
             }
             run(tmerge, command_options);
         }break;
@@ -349,6 +350,7 @@ int main(int argc, char **argv)
         } break;
         default: {assert(0 && "Invalid Cmd type\n\n");};
     }
+  defer:
     cleanup();
-    return 0;
+    return value;
 }
