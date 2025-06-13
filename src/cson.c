@@ -481,6 +481,12 @@ size_t cson_map_memsize(Cson *map)
     return total;
 }
 
+bool cson_map_iskey(Cson *map, CsonStr key)
+{
+    if (map == NULL || map->type != Cson_Map) return false;
+    return cson_map_get(map, key) != NULL;
+}
+
 Cson *cson_map_keys(Cson *map)
 {
     if (map == NULL || map->type != Cson_Map) return NULL;

@@ -256,12 +256,63 @@ int main(int argc, char **argv)
                     return print_branches(branches);
                 }
                 else if (strcmp(arg, "new") == 0){
-                    printf("TODO: branch new\n");
+                    if (argc < 2){
+                        fprintf(stderr, "[ERROR] Missing arguments!\n");
+                        print_branch_usage(program_name);
+                        return 1;
+                    }
+                    Cson *branches = cson_get(info, key("branches"));
+                    if (!cson_is_map(branches)){
+                        fprintf(stderr, "[ERROR] Invalid info file state!\n");
+                        return 1;
+                    }
+                    const char *name = shift_args(argc, argv);
+                    if (cson_map_iskey(branches, cson_str((char*) name))){
+                        fprintf(stderr, "[ERROR] Branch already exists!\n");
+                        return 1;
+                    }
+                    Cson *branch = cson_map_new();
+                    Cson *dirs = cson_array_new();
+                    Cson *id = cson_new_int(0);
+                    Cson *backups = cson_array_new();
+                    while (argc > 0){
+                        const char *dir = shift_args(argc, argv);
+                        cson_array_push(dirs, cson_new_cstring((char*) dir));
+                    }
+                    (void) cson_map_insert(branch, cson_str("dirs"), dirs);
+                    (void) cson_map_insert(branch, cson_str("backups"), backups);
+                    (void) cson_map_insert(branch, cson_str("last_id"), id);
+                    
+                    (void) cson_map_insert(branches, cson_str((char*) name), branch);
+                    
+                    cson_write(info, info_path);
+                    fprintf(stdout, "[INFO] Successfully created new branch '%s'!", name);
                     return 0;
                 }
                 else if (strcmp(arg, "delete") == 0){
-                    printf("TODO: branch delete\n");
-                    return 0;
+                    if (argc < 1){
+                        fprintf(stderr, "[ERROR] Missing argument!\n");
+                        print_branch_usage(program_name);
+                        return 1;
+                    }
+                    Cson *branches = cson_get(info, key("branches"));
+                    if (!cson_is_map(branches)){
+                        fprintf(stderr, "[ERROR] Invalid info file state!\n");
+                        return 1;
+                    }
+                    char *name = (char*) shift_args(argc, argv);
+                    CsonError error = cson_map_remove(branches, cson_str(name));
+                    if (error == CsonError_KeyError){
+                        fprintf(stderr, "[ERROR] This branch does not exist: '%s'!\n", name);
+                        return 1;
+                    }else if (error == CsonError_Success){
+                        cson_write(info, info_path);
+                        fprintf(stdout, "[INFO] Successfully deleted branch '%s'!\n", name);
+                        return 0;
+                    }else{
+                        fprintf(stderr, "[ERROR] An error occured while deleting branch '%s': %s!\n", name, CsonErrorStrings[error]);
+                        return 1;
+                    }
                 }
                 else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0){
                     print_branch_usage(program_name);

@@ -266,6 +266,7 @@ CBQLIB Cson* cson_map_new(void);
 CBQLIB CsonError cson_map_insert(Cson *map, CsonStr key, Cson *value);
 CBQLIB CsonError cson_map_remove(Cson *map, CsonStr key);
 CBQLIB Cson* cson_map_get(Cson *map, CsonStr key);
+CBQLIB bool cson_map_iskey(Cson *map, CsonStr key);
 CBQLIB Cson *cson_map_keys(Cson *map);
 CBQLIB Cson* cson_map_dup(Cson *map);
 CBQLIB size_t cson_map_memsize(Cson *map);
