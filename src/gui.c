@@ -23,7 +23,11 @@ typedef struct {
     Clay_Color border;
     Clay_Color hover;
     Clay_Color secondary;
+    Clay_Color danger;
+    Clay_Color success;
 } Theme;
+
+typedef void (*FuncButtonData)(void);
 
 const Theme charcoal_teal = {
     { 34,  43,  46,  255 },  // background
@@ -32,15 +36,132 @@ const Theme charcoal_teal = {
     { 55,  64,  69,  255 },  // border
     { 2,   158, 136, 255 },  // hover
     { 124, 138, 148, 255 },  // secondary
+    { 220,  53,  69,  255 }, // danger (muted crimson)
+    { 40,  167,  69,  255 }, // success (teal green)
 };
 
 Theme window_theme = charcoal_teal;
+
+typedef struct{
+    Clay_String text;   
+} Branch;
+
+typedef struct{
+    Branch *items;
+    size_t size;
+    size_t capacity;
+} Branches;
+
+Branch test_branches[] = {
+    (Branch) {.text=CLAY_STRING("'branch1': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch2': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch3': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch4': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch5': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+};
+
+//static Branches branches = {0};
+static Branches branches = {
+    .items = test_branches,
+    .size = 5,
+    .capacity = 10
+};
+
+static int selected_branch = -1;
 
 Clay_Color backgroundColor = {43, 41, 51, 255 };
 Clay_Color whiteColor = {255, 255, 255, 255};
 
 void HandleClayErrors(Clay_ErrorData errorData) {
     printf("%s", errorData.errorText.chars);
+}
+
+Clay_Color darken_color(Clay_Color color)
+{
+    const float factor = 0.8f;
+    return (Clay_Color){color.r*factor, color.g*factor, color.b*factor, color.a};
+}
+
+void HandleFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    FuncButtonData button_data = (FuncButtonData)user_data;
+    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
+        if (button_data != NULL) button_data();
+    }
+}
+
+void HandleIndexButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    int index = (int) user_data;
+    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
+        selected_branch = index;
+    }
+}
+
+// button functions
+void func_branch_new(void)
+{
+    printf("Add!\n");
+}
+
+void func_branch_remove(void)
+{
+    printf("Remove!\n");
+}
+
+void func_backup(void)
+{
+    printf("Backup!\n");
+}
+
+void func_merge(void)
+{
+    printf("Merge!\n");
+}
+
+// render functions
+void render_branch_action_button(Clay_String string, Clay_Color color, FuncButtonData data)
+{
+    CLAY({
+        .backgroundColor = Clay_Hovered()? darken_color(color) : color,
+        .layout = {
+            .sizing = {.width = CLAY_SIZING_GROW()},
+            .padding = {.left=8, .right=8, .top=4, .bottom=4},
+            .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
+        },
+    }){
+        CLAY_TEXT(string, CLAY_TEXT_CONFIG({
+            .textColor = window_theme.text,
+            .fontId = DEFAULT,
+            .fontSize = 16
+        }));
+        if (Clay_Hovered()){
+            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+        }
+        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) data);
+    }
+}
+
+void render_action_button(Clay_String string, FuncButtonData data)
+{
+    CLAY({
+        .backgroundColor = Clay_Hovered()? darken_color(window_theme.accent) : window_theme.accent,
+        .layout = {
+            .padding = CLAY_PADDING_ALL(4)
+        }
+    }){
+        CLAY_TEXT(string, CLAY_TEXT_CONFIG({
+            .textColor = window_theme.text,
+            .fontId = DEFAULT, 
+            .fontSize = 18
+        }));        
+        if (Clay_Hovered()){
+            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+        }
+        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) data);
+    }
 }
 
 Clay_RenderCommandArray test_layout(){
@@ -95,6 +216,7 @@ Clay_RenderCommandArray main_layout()
                 .layoutDirection = CLAY_TOP_TO_BOTTOM
             }
         }){
+            if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_DEFAULT);
             CLAY({
                 .id = CLAY_ID("task_bar"),
                 .backgroundColor = window_theme.secondary,
@@ -147,31 +269,71 @@ Clay_RenderCommandArray main_layout()
                     .fontSize = 16
                 }));
                 CLAY({
-                    .id = CLAY_ID("branch_selector"),
                     .layout = {
-                        .sizing = {.height=CLAY_SIZING_FIXED(412)},
-                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                        .padding = CLAY_PADDING_ALL(4)
-                    },
-                    .border = {
-                        .color = window_theme.hover,
-                        .width = CLAY_BORDER_OUTSIDE(2)
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .layoutDirection = CLAY_LEFT_TO_RIGHT,
+                        .childGap = 8
                     }
                 }){
-                    for (size_t i=0; i<5; ++i){
+                    CLAY({
+                        .layout = {
+                            .sizing = {.width=CLAY_SIZING_GROW()},
+                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                            .childGap = 8
+                        }
+                    }){
                         CLAY({
-                            .backgroundColor = Clay_Hovered()? window_theme.hover : NO_COLOR,
+                            .id = CLAY_ID("branch_selector"),
                             .layout = {
-                                .sizing = {.width=CLAY_SIZING_FIT(732)},
-                                .padding = CLAY_PADDING_ALL(2),
+                                .sizing = {.height=CLAY_SIZING_FIXED(256), .width=CLAY_SIZING_GROW()},
+                                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                                .padding = CLAY_PADDING_ALL(4)
+                            },
+                            .border = {
+                                .color = window_theme.hover,
+                                .width = CLAY_BORDER_OUTSIDE(2)
                             }
                         }){
-                            CLAY_TEXT(CLAY_STRING("'content': ['c:/path/to/somewhere', 'd:/wow/somewhere/else']"), CLAY_TEXT_CONFIG({
-                                .textColor = window_theme.text,
-                                .fontId = BODY_16, 
-                                .fontSize = 16
-                            }));
+                            for (size_t i=0; i<branches.size; ++i){
+                                Branch branch = branches.items[i];
+                                CLAY({
+                                    .backgroundColor = selected_branch == (int)i? window_theme.accent : Clay_Hovered()? window_theme.secondary : NO_COLOR,
+                                    .layout = {
+                                        .sizing = {.width=CLAY_SIZING_GROW()},
+                                        .padding = CLAY_PADDING_ALL(2),
+                                    }
+                                }){
+                                    CLAY_TEXT(branch.text, CLAY_TEXT_CONFIG({
+                                        .textColor = window_theme.text,
+                                        .fontId = BODY_16, 
+                                        .fontSize = 16
+                                    }));
+                                    Clay_OnHover(HandleIndexButtonInteraction, (int) i);
+                                }
+                            }
                         }
+                        CLAY({
+                            .id = CLAY_ID("action_frame"),
+                            .layout = {
+                                .sizing = {.width=CLAY_SIZING_GROW()},
+                                .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+                                .childGap = 64
+                            }
+                        }){
+                            render_action_button(CLAY_STRING("Make Backup"), func_backup);
+                            render_action_button(CLAY_STRING("Merge Backup"), func_merge);
+                        }
+                    }
+                    CLAY({
+                        .id = CLAY_ID("branch_action_frame"),
+                        .layout = {
+                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                            .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+                            .childGap = 4
+                        }
+                    }){
+                        render_branch_action_button(CLAY_STRING("New"), window_theme.accent, func_branch_new);
+                        render_branch_action_button(CLAY_STRING("Remove"), window_theme.danger, func_branch_remove);
                     }
                 }
             }            
