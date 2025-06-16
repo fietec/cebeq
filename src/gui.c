@@ -270,14 +270,14 @@ Clay_RenderCommandArray main_layout()
                 }));
                 CLAY({
                     .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .sizing = {.width=CLAY_SIZING_GROW(), .height=CLAY_SIZING_GROW()},
                         .layoutDirection = CLAY_LEFT_TO_RIGHT,
                         .childGap = 8
                     }
                 }){
                     CLAY({
                         .layout = {
-                            .sizing = {.width=CLAY_SIZING_GROW()},
+                            .sizing = {.width=CLAY_SIZING_GROW(), .height=CLAY_SIZING_GROW()},
                             .layoutDirection = CLAY_TOP_TO_BOTTOM,
                             .childGap = 8
                         }
@@ -285,7 +285,7 @@ Clay_RenderCommandArray main_layout()
                         CLAY({
                             .id = CLAY_ID("branch_selector"),
                             .layout = {
-                                .sizing = {.height=CLAY_SIZING_FIXED(256), .width=CLAY_SIZING_GROW()},
+                                .sizing = {.height=CLAY_SIZING_GROW(), .width=CLAY_SIZING_GROW()},
                                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                                 .padding = CLAY_PADDING_ALL(4)
                             },
@@ -344,7 +344,7 @@ Clay_RenderCommandArray main_layout()
 
 int main(void) {
     if (!setup()) return 1;
-    Clay_Raylib_Initialize(1024, 768, "Cebeq Gui", FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
+    Clay_Raylib_Initialize(768, 432, "Cebeq Gui", FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
 
     uint64_t clayRequiredMemory = Clay_MinMemorySize();
     Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(clayRequiredMemory, malloc(clayRequiredMemory));
