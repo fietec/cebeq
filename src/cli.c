@@ -287,7 +287,7 @@ int main(int argc, char **argv)
                     (void) cson_map_insert(branches, cson_str((char*) name), branch);
                     
                     cson_write(info, info_path);
-                    fprintf(stdout, "[INFO] Successfully created new branch '%s'!", name);
+                    fprintf(stdout, "[INFO] Successfully created new branch '%s'!\n", name);
                     return_defer(0);
                 }
                 else if (strcmp(arg, "delete") == 0){
