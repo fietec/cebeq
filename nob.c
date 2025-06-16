@@ -1,5 +1,6 @@
 #include <string.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
 #define NOB_IMPLEMENTATION
 #include "nob.h"
@@ -27,7 +28,7 @@ void append_head(Nob_Cmd *cmd)
     //nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG"); // remove this in production build
 }
 
-void build_lib(Nob_Cmd *cmd)
+bool build_lib(Nob_Cmd *cmd)
 {
     nob_log(NOB_INFO, "Building core library..");
     
@@ -39,10 +40,10 @@ void build_lib(Nob_Cmd *cmd)
 #else
     nob_cmd_append(cmd, "-fPIC", "-shared", "-o", "build/libcore.so");
 #endif // _WIN32
-    nob_cmd_run_sync_and_reset(cmd);
+    return nob_cmd_run_sync_and_reset(cmd);
 }   
 
-void build_cli(Nob_Cmd *cmd)
+bool build_cli(Nob_Cmd *cmd)
 {
     nob_log(NOB_INFO, "Building cli..");
     append_head(cmd);
@@ -51,10 +52,10 @@ void build_cli(Nob_Cmd *cmd)
 #ifndef _WIN32
     nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
-    nob_cmd_run_sync_and_reset(cmd);
+    return nob_cmd_run_sync_and_reset(cmd);
 }
 
-void build_gui(Nob_Cmd *cmd)
+bool build_gui(Nob_Cmd *cmd)
 {
     nob_log(NOB_INFO, "Building gui..");
     const char *raylib_path = "lib/libraylib.a";
@@ -62,7 +63,7 @@ void build_gui(Nob_Cmd *cmd)
     if (stat("lib/libraylib.a", &attr) == -1){
         nob_log(NOB_ERROR, "Raylib static library not found at at %s.", raylib_path);
         nob_log(NOB_ERROR, "Please provide a built raylib lib in that location to procede.");
-        return;
+        return false;
     }
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/gui");
@@ -70,10 +71,10 @@ void build_gui(Nob_Cmd *cmd)
 #ifndef _WIN32
     nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
-    nob_cmd_run_sync_and_reset(cmd);
+    return nob_cmd_run_sync_and_reset(cmd);
 }
 
-void build_test(Nob_Cmd *cmd)
+bool build_test(Nob_Cmd *cmd)
 {
     nob_log(NOB_INFO, "Building test..");
     append_head(cmd);
@@ -82,14 +83,12 @@ void build_test(Nob_Cmd *cmd)
 #ifndef _WIN32
     nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
-    nob_cmd_run_sync_and_reset(cmd);
+    return nob_cmd_run_sync_and_reset(cmd);
 }
 
-void build_all(Nob_Cmd *cmd)
+bool build_all(Nob_Cmd *cmd)
 {
-    build_lib(cmd);
-    build_cli(cmd);
-    build_gui(cmd);
+    return build_lib(cmd) && build_cli(cmd) && build_gui(cmd);
 }
 
 int main(int argc, char **argv)
@@ -103,11 +102,21 @@ int main(int argc, char **argv)
     const char *program_name = argv[0];
     if (argc > 1){
         const char *target = argv[1];
-        if (strcmp(target, "cli") ==  0) build_cli(&cmd);
-        else if (strcmp(target, "gui") == 0) build_gui(&cmd);
-        else if (strcmp(target, "lib") == 0) build_lib(&cmd);
-        else if (strcmp(target, "all") == 0) build_all(&cmd);
-        else if (strcmp(target, "test") == 0) build_test(&cmd);
+        if (strcmp(target, "cli") ==  0) {
+            if (!build_cli(&cmd)) return 1;
+        }
+        else if (strcmp(target, "gui") == 0) {
+            if (!build_gui(&cmd)) return 1;
+        }
+        else if (strcmp(target, "lib") == 0) {
+            if (!build_lib(&cmd)) return 1;
+        }
+        else if (strcmp(target, "all") == 0) {
+            if (!build_all(&cmd)) return 1;
+        }
+        else if (strcmp(target, "test") == 0) {
+            if (!build_test(&cmd)) return 1;
+        }
         else if (strcmp(target, "help") == 0) print_usage(program_name);
         else{
             fprintf(stderr, "[ERROR] Unknown target: '%s'!\n", target);
