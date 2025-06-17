@@ -9,6 +9,7 @@
 #include <clay_renderer_raylib.c>
 
 #define NO_COLOR ((Clay_Color) {0})
+#define clay_string(str) (Clay_String) {false, strlen(str), str}
 
 typedef enum{
     DEFAULT,
@@ -36,14 +37,16 @@ const Theme charcoal_teal = {
     { 55,  64,  69,  255 },  // border
     { 2,   158, 136, 255 },  // hover
     { 124, 138, 148, 255 },  // secondary
-    { 220,  53,  69,  255 }, // danger (muted crimson)
-    { 40,  167,  69,  255 }, // success (teal green)
+    { 220,  53,  69,  255 }, // danger 
+    { 40,  167,  69,  255 }, // success
 };
 
 Theme window_theme = charcoal_teal;
 
 typedef struct{
-    Clay_String text;   
+    char name[32];
+    char dtext[128]; 
+    Clay_String text;
 } Branch;
 
 typedef struct{
@@ -58,19 +61,21 @@ Branch test_branches[] = {
     (Branch) {.text=CLAY_STRING("'branch3': ['d:/some/path', 'c:/path/to/somewhere/else']")},
     (Branch) {.text=CLAY_STRING("'branch4': ['d:/some/path', 'c:/path/to/somewhere/else']")},
     (Branch) {.text=CLAY_STRING("'branch5': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch6': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch7': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch8': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch9': ['d:/some/path', 'c:/path/to/somewhere/else']")},
+    (Branch) {.text=CLAY_STRING("'branch10': ['d:/some/path', 'c:/path/to/somewhere/else']")},
 };
 
 //static Branches branches = {0};
 static Branches branches = {
     .items = test_branches,
-    .size = 5,
+    .size = arr_len(test_branches),
     .capacity = 10
 };
 
 static int selected_branch = -1;
-
-Clay_Color backgroundColor = {43, 41, 51, 255 };
-Clay_Color whiteColor = {255, 255, 255, 255};
 
 void HandleClayErrors(Clay_ErrorData errorData) {
     printf("%s", errorData.errorText.chars);
@@ -129,13 +134,13 @@ void render_branch_action_button(Clay_String string, Clay_Color color, FuncButto
         .layout = {
             .sizing = {.width = CLAY_SIZING_GROW()},
             .padding = {.left=8, .right=8, .top=4, .bottom=4},
-            .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
+            .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
         },
     }){
         CLAY_TEXT(string, CLAY_TEXT_CONFIG({
             .textColor = window_theme.text,
             .fontId = DEFAULT,
-            .fontSize = 16
+            .fontSize = 16,
         }));
         if (Clay_Hovered()){
             SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
@@ -149,13 +154,14 @@ void render_action_button(Clay_String string, FuncButtonData data)
     CLAY({
         .backgroundColor = Clay_Hovered()? darken_color(window_theme.accent) : window_theme.accent,
         .layout = {
-            .padding = CLAY_PADDING_ALL(4)
-        }
+            .padding = CLAY_PADDING_ALL(8),
+        },
     }){
         CLAY_TEXT(string, CLAY_TEXT_CONFIG({
             .textColor = window_theme.text,
             .fontId = DEFAULT, 
-            .fontSize = 18
+            .fontSize = 18,
+            .letterSpacing = 2,
         }));        
         if (Clay_Hovered()){
             SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
@@ -163,6 +169,8 @@ void render_action_button(Clay_String string, FuncButtonData data)
         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) data);
     }
 }
+
+// Layouts
 
 Clay_RenderCommandArray test_layout(){
     Clay_BeginLayout();
@@ -292,7 +300,8 @@ Clay_RenderCommandArray main_layout()
                             .border = {
                                 .color = window_theme.hover,
                                 .width = CLAY_BORDER_OUTSIDE(2)
-                            }
+                            },
+                            .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() },
                         }){
                             for (size_t i=0; i<branches.size; ++i){
                                 Branch branch = branches.items[i];
@@ -306,7 +315,8 @@ Clay_RenderCommandArray main_layout()
                                     CLAY_TEXT(branch.text, CLAY_TEXT_CONFIG({
                                         .textColor = window_theme.text,
                                         .fontId = BODY_16, 
-                                        .fontSize = 16
+                                        .fontSize = 16,
+                                        .letterSpacing = 2
                                     }));
                                     Clay_OnHover(HandleIndexButtonInteraction, (int) i);
                                 }
@@ -359,9 +369,10 @@ int main(void) {
     fonts[DEFAULT] = GetFontDefault();
     cwk_path_join(program_dir, "resources/Roboto-Regular.ttf", font_path, sizeof(font_path));
     fonts[BODY_16] = LoadFontEx(font_path, 16, NULL, 400);
+    
     SetTextureFilter(fonts[BODY_16].texture, TEXTURE_FILTER_BILINEAR);
     Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
-
+    
     while (!WindowShouldClose()) {
         Clay_SetLayoutDimensions((Clay_Dimensions) {
             .width = GetScreenWidth(),
