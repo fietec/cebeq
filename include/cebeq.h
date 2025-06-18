@@ -58,12 +58,12 @@
 #else
     #ifdef CEBEQ_DEBUG
         #define dprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[DEBUG] %s:%d in %s: " msg "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
-        #define iprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[INFO] %s:%d in %s: " msg "", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
-        #define eprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[ERROR] %s:%d in %s: " msg "", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
+        #define iprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[INFO] %s:%d in %s: " msg "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
+        #define eprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[ERROR] %s:%d in %s: " msg "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
     #else
         #define dprintf(msg, ...) 
-        #define iprintf(msg, ...) do{fprintf(stdout, "[INFO]" msg "\n", ##__VA_ARGS__);}while(0)
-        #define eprintf(msg, ...) do{fprintf(stderr, "[ERROR]" msg "\n", ##__VA_ARGS__);}while(0)
+        #define iprintf(msg, ...) do{fprintf(stdout, "[INFO] " msg "\n", ##__VA_ARGS__);}while(0)
+        #define eprintf(msg, ...) do{fprintf(stderr, "[ERROR] " msg "\n", ##__VA_ARGS__);}while(0)
     #endif // CEBEQ_DEBUG
 #endif // CEBEQ_MSGQ
 

@@ -12,21 +12,12 @@
                 "d:\\testing\\content_2" 
             ] 
         },
-        "testing": {
-            "last_id": 0,
-            "dirs": [
-                "C:/Users/constantijn/AppData/Local/Temp" 
-            ],
-            "backups": [
-            ] 
-        },
         "geoguessr": {
             "last_id": 0,
             "dirs": [
-                "d:/cdemeer/geoguessr" 
+                "d:/cdemeer/geoguessr"
             ],
-            "backups": [
-            ] 
-        } 
+            "backups": []
+        }
     } 
 }
