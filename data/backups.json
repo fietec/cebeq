@@ -2,12 +2,14 @@
     "version": "0.0.2",
     "branches": {
         "content": {
-            "last_id": 0,
+            "last_id": 2,
             "dirs": [
                 "c:/users/constantijn/desktop",
                 "d:/cdemeer/geoguessr" 
             ],
             "backups": [
+                "d:\\testing\\content_1",
+                "d:\\testing\\content_2" 
             ] 
         },
         "testing": {

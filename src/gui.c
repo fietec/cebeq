@@ -1,7 +1,12 @@
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
+#include <message_queue.h>
 #include <cebeq.h>
 #include <cwalk.h>
+#include <cson.h>
+#include <nob.h>
 
 #include <raylib.h>
 #define CLAY_IMPLEMENTATION
@@ -11,11 +16,18 @@
 #define NO_COLOR ((Clay_Color) {0})
 #define clay_string(str) (Clay_String) {false, strlen(str), str}
 
+#define error(msg, ...) (fprintf(stderr, "[ERROR] " msg "\n", ##__VA_ARGS__)) 
+
 typedef enum{
     DEFAULT,
     BODY_16,
     _FontId_Count
 } FontIds;
+
+typedef enum{
+    SYMBOL_EXIT_16,
+    _TextureId_Count
+} TextureIds;
 
 typedef struct {
     Clay_Color background;
@@ -44,38 +56,70 @@ const Theme charcoal_teal = {
 Theme window_theme = charcoal_teal;
 
 typedef struct{
-    char name[32];
-    char dtext[128]; 
+    const char *name;
     Clay_String text;
 } Branch;
 
 typedef struct{
     Branch *items;
-    size_t size;
+    size_t count;
     size_t capacity;
 } Branches;
 
-Branch test_branches[] = {
-    (Branch) {.text=CLAY_STRING("'branch1': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch2': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch3': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch4': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch5': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch6': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch7': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch8': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch9': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-    (Branch) {.text=CLAY_STRING("'branch10': ['d:/some/path', 'c:/path/to/somewhere/else']")},
-};
+static Texture2D textures[_TextureId_Count];
 
-//static Branches branches = {0};
-static Branches branches = {
-    .items = test_branches,
-    .size = arr_len(test_branches),
-    .capacity = 10
-};
+static Branches branches = {0};
 
 static int selected_branch = -1;
+static bool show_settings = false;
+static Cson *c_info = NULL;
+static Cson *c_branches = NULL;
+
+Nob_String_Builder sb = {0};
+
+bool set_branches(void)
+{
+    branches.count = 0;
+    Cson *branch_names = cson_map_keys(c_branches);
+    if (!cson_is_array(branch_names)){
+        error("Invalid branch info state!");
+        return false;
+    }
+    size_t branch_count = cson_len(branch_names);
+    for (size_t i=0; i<branch_count; ++i){
+        char *name = cson_get_cstring(branch_names, index(i));
+        Cson *branch = cson_get(c_branches, key(name));
+        if (!cson_is_map(branch)){
+            error("branch '%s' is not in a valid state!", name);
+            return false;
+        }
+        Cson *dirs = cson_get(branch, key("dirs"));
+        if (!cson_is_array(dirs)){
+            error("branch '%s' has no <dirs> field!", name);
+            return 1;
+        }
+        size_t dir_count = cson_len(dirs);
+        sb.count = 0;
+        nob_sb_append_cstr(&sb, name);
+        nob_sb_append_cstr(&sb, ": [");
+        for (size_t i=0; i<dir_count; ++i){
+            if (i > 0){
+                nob_sb_append_cstr(&sb, ", ");
+            }
+            nob_sb_append_cstr(&sb, "'");
+            nob_sb_append_cstr(&sb, cson_get_cstring(dirs, index(i)));
+            nob_sb_append_cstr(&sb, "'");
+        }
+        nob_sb_append_cstr(&sb, "]");
+        nob_sb_append_null(&sb);
+        Branch b = {
+            .text = (Clay_String) {false, sb.count-1, strdup(sb.items)},
+            .name = name
+        };
+        nob_da_append(&branches, b);
+    }
+    return true;
+}
 
 void HandleClayErrors(Clay_ErrorData errorData) {
     printf("%s", errorData.errorText.chars);
@@ -91,7 +135,7 @@ void HandleFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_dat
 {
     (void) id;
     FuncButtonData button_data = (FuncButtonData)user_data;
-    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
+    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
         if (button_data != NULL) button_data();
     }
 }
@@ -113,7 +157,21 @@ void func_branch_new(void)
 
 void func_branch_remove(void)
 {
-    printf("Remove!\n");
+    if (selected_branch >= 0 && selected_branch < (int) branches.count){
+        printf("Removing branch '%s'..\n", branches.items[selected_branch].name);
+    }
+}
+
+void func_task_loc_open(void)
+{
+    char command[FILENAME_MAX + 32] = {0};
+  #ifdef _WIN32
+    const char *fman = "explorer";
+  #else
+    const char *fman = "xdg-open";
+  #endif // _WIN32
+    snprintf(command, sizeof(command), "%s %s", fman, exe_dir);
+    system(command);
 }
 
 void func_backup(void)
@@ -127,6 +185,79 @@ void func_merge(void)
 }
 
 // render functions
+void func_toggle_settings_menu(void)
+{
+    show_settings = !show_settings;
+}
+
+void render_settings_menu(void)
+{
+    CLAY({
+        .backgroundColor = {255, 255, 255, 51},
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
+        },
+        .layout = {
+            .sizing = {CLAY_SIZING_GROW(), CLAY_SIZING_GROW()},
+            .childAlignment={CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+        },
+    }){
+        CLAY({
+            .id = CLAY_ID("settings_frame"),
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            }
+        }){
+            CLAY({
+                .backgroundColor = window_theme.secondary,
+                .layout = {
+                    .sizing = {.width=CLAY_SIZING_GROW()},
+                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+                }
+            }){
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .padding = {.left=4}
+                    }
+                }){
+                    CLAY_TEXT(CLAY_STRING("Settings"), CLAY_TEXT_CONFIG({
+                        .textColor = window_theme.text,
+                        .fontId = DEFAULT, 
+                        .fontSize = 16
+                    }));
+                }
+                CLAY({
+                    .backgroundColor = Clay_Hovered()? darken_color(window_theme.danger) : window_theme.danger,
+                    .layout = {
+                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                    },
+                }){
+                    CLAY({
+                        .layout = {
+                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
+                        },
+                        .image = {&textures[SYMBOL_EXIT_16]}
+                    })
+                    //CLAY_TEXT(CLAY_STRING("X"), CLAY_TEXT_CONFIG({
+                    //    .textColor = window_theme.text,
+                    //    .fontId = DEFAULT, 
+                    //    .fontSize = 16
+                    //}));
+                    Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_toggle_settings_menu);
+                }
+            }
+            CLAY({
+                .backgroundColor = window_theme.background,
+                .layout = {
+                    .sizing = {CLAY_SIZING_FIXED(196), CLAY_SIZING_FIXED(196)}
+                }
+            }){}
+        }
+    }
+}
+
 void render_branch_action_button(Clay_String string, Clay_Color color, FuncButtonData data)
 {
     CLAY({
@@ -152,7 +283,7 @@ void render_branch_action_button(Clay_String string, Clay_Color color, FuncButto
 void render_action_button(Clay_String string, FuncButtonData data)
 {
     CLAY({
-        .backgroundColor = Clay_Hovered()? darken_color(window_theme.accent) : window_theme.accent,
+        .backgroundColor = Clay_Hovered()? window_theme.hover : window_theme.accent,
         .layout = {
             .padding = CLAY_PADDING_ALL(8),
         },
@@ -167,6 +298,25 @@ void render_action_button(Clay_String string, FuncButtonData data)
             SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
         }
         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) data);
+    }
+}
+
+void render_task_menu_button(Clay_String string, FuncButtonData data)
+{
+    CLAY({
+        .backgroundColor = Clay_Hovered()? window_theme.hover : window_theme.secondary,
+        .layout = {
+            .sizing = {.width = CLAY_SIZING_GROW()},
+            .padding = {.left=8, .right=8, .top=4, .bottom=4},
+        },
+    }){
+        CLAY_TEXT(string, CLAY_TEXT_CONFIG({
+            .textColor = window_theme.text,
+            .fontId = DEFAULT,
+            .fontSize = 12,
+            .letterSpacing = 2
+        }));
+        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)data);
     }
 }
 
@@ -229,12 +379,13 @@ Clay_RenderCommandArray main_layout()
                 .id = CLAY_ID("task_bar"),
                 .backgroundColor = window_theme.secondary,
                 .layout = {
-                    .sizing = {.height=CLAY_SIZING_FIT(), .width=CLAY_SIZING_GROW()},
+                    .sizing = {.width=CLAY_SIZING_GROW()},
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .padding = CLAY_PADDING_ALL(4),
                 }
             }){
                 CLAY({
+                    .id = CLAY_ID("task_file_button"),
                     .backgroundColor = Clay_Hovered()? window_theme.hover : NO_COLOR,
                     .layout = {
                         .padding = {.left=8, .right=8, .top=4, .bottom=4},
@@ -246,6 +397,27 @@ Clay_RenderCommandArray main_layout()
                         .fontId = DEFAULT,
                         .fontSize = 16
                     }));
+                    bool hovered = Clay_PointerOver(Clay_GetElementId(CLAY_STRING("task_file_button"))) || Clay_PointerOver(Clay_GetElementId(CLAY_STRING("task_file_menu")));
+                    if (hovered){
+                        CLAY({
+                            .id = CLAY_ID("task_file_menu"),
+                            .floating = {
+                                .attachTo = CLAY_ATTACH_TO_PARENT,
+                                .attachPoints = {.parent = CLAY_ATTACH_POINT_LEFT_BOTTOM},
+                            },
+                            .layout = {
+                                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                            },
+                            .border = {
+                                .color = darken_color(window_theme.secondary),
+                                .width = CLAY_BORDER_OUTSIDE(2)
+                            }
+                        }){
+                            render_task_menu_button(CLAY_STRING("Open File Location"), func_task_loc_open);
+                            render_task_menu_button(CLAY_STRING("Open Config File"), NULL);
+                            render_task_menu_button(CLAY_STRING("Copy Path"), NULL);
+                        }
+                    }
                 }
                 CLAY({
                     .backgroundColor = Clay_Hovered()? window_theme.hover : NO_COLOR,
@@ -259,6 +431,10 @@ Clay_RenderCommandArray main_layout()
                         .fontId = DEFAULT,
                         .fontSize = 16
                     }));
+                    Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_toggle_settings_menu);
+                    if (show_settings){
+                        render_settings_menu();
+                    }
                 }
             }
             
@@ -303,7 +479,7 @@ Clay_RenderCommandArray main_layout()
                             },
                             .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() },
                         }){
-                            for (size_t i=0; i<branches.size; ++i){
+                            for (size_t i=0; i<branches.count; ++i){
                                 Branch branch = branches.items[i];
                                 CLAY({
                                     .backgroundColor = selected_branch == (int)i? window_theme.accent : Clay_Hovered()? window_theme.secondary : NO_COLOR,
@@ -346,7 +522,7 @@ Clay_RenderCommandArray main_layout()
                         render_branch_action_button(CLAY_STRING("Remove"), window_theme.danger, func_branch_remove);
                     }
                 }
-            }            
+            }   
         }
     }
     return Clay_EndLayout();
@@ -354,6 +530,23 @@ Clay_RenderCommandArray main_layout()
 
 int main(void) {
     if (!setup()) return 1;
+    
+    int value = 0;    
+    char info_path[FILENAME_MAX] = {0};
+    cwk_path_join(program_dir, "data/backups.json", info_path, sizeof(info_path));
+    
+    c_info = cson_read(info_path);
+    if (c_info == NULL){
+        error("Could not find internal info file!\n");
+        return_defer(1);
+    }
+    c_branches = cson_get(c_info, key("branches"));
+    if (!cson_is_map(c_branches)){
+        error("Could not find <branches> field in info file!");
+        return_defer(1);
+    }
+    if (!set_branches()) return_defer(1);
+    
     Clay_Raylib_Initialize(768, 432, "Cebeq Gui", FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
 
     uint64_t clayRequiredMemory = Clay_MinMemorySize();
@@ -372,6 +565,9 @@ int main(void) {
     
     SetTextureFilter(fonts[BODY_16].texture, TEXTURE_FILTER_BILINEAR);
     Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
+    
+    cwk_path_join(program_dir, "resources/MaterialIcons/close_16.png", font_path, sizeof(font_path));
+    textures[SYMBOL_EXIT_16] = LoadTexture(font_path);
     
     while (!WindowShouldClose()) {
         Clay_SetLayoutDimensions((Clay_Dimensions) {
@@ -392,11 +588,20 @@ int main(void) {
         );
 
         Clay_RenderCommandArray renderCommands = main_layout();
-        
+        //iprintf("Begin drawing");
         BeginDrawing();
         Clay_Raylib_Render(renderCommands, fonts);
         EndDrawing();
     }
     Clay_Raylib_Close();
+    for (size_t i=0; i<_FontId_Count; ++i){
+        UnloadFont(fonts[i]);
+    }
+    for (size_t i=0; i<_TextureId_Count; ++i){
+        UnloadTexture(textures[i]);
+    }
+    return_defer(0);
+  defer:
     cleanup();
+    return value;
 }

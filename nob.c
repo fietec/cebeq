@@ -22,9 +22,9 @@ void print_usage(const char *program_name)
 
 void append_head(Nob_Cmd *cmd)
 {
-    nob_cmd_append(cmd, "gcc", "-I", "./include");
-    nob_cmd_append(cmd, "-std=gnu23");
+    nob_cmd_append(cmd, "gcc", "-std=gnu23");
     nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow"); // definetly not cheating here..    
+    nob_cmd_append(cmd, "-I", "./include", "-I", "./thirdparty", "-I.");
     //nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG"); // remove this in production build
 }
 
@@ -36,7 +36,7 @@ bool build_lib(Nob_Cmd *cmd)
     append_head(cmd);
     nob_cmd_append(cmd, "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c", "src/cebeq.c", "src/threading.c", "src/message_queue.c");
 #ifdef _WIN32
-    nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-D", "CEBEQ_COLOR", "-shared", "-o", "build/core.dll");
+    nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-D", "CEBEQ_COLOR", "-D", "CEBEQ_MSGQ", "-shared", "-o", "build/core.dll");
 #else
     nob_cmd_append(cmd, "-fPIC", "-shared", "-o", "build/libcore.so");
 #endif // _WIN32
@@ -68,6 +68,7 @@ bool build_gui(Nob_Cmd *cmd)
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/gui");
     nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore", "-Llib", "-lraylib", "-lgdi32", "-lwinmm");
+    nob_cmd_append(cmd, "-Wno-unused-function"); // caused by nob.h
 #ifndef _WIN32
     nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
