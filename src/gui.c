@@ -13,6 +13,8 @@
 #include <clay.h>
 #include <clay_renderer_raylib.c>
 
+#define NEW_BRANCH_MAX_LEN 32
+
 #define NO_COLOR ((Clay_Color) {0})
 #define clay_string(str) (Clay_String) {false, strlen(str), str}
 
@@ -26,7 +28,8 @@ typedef enum{
 
 typedef enum{
     DEFAULT,
-    BODY_16,
+    MONO_12,
+    MONO_16,
     _FontId_Count
 } FontIds;
 
@@ -88,8 +91,12 @@ static Branches branches = {0};
 static int selected_branch = -1;
 static Cson *c_info = NULL;
 static Cson *c_branches = NULL;
+static int frame_counter = 0;
+char new_branch_name[NEW_BRANCH_MAX_LEN+1] = {0};
+int new_branch_len = 0;
+static char temp_buffer[256] = {0};
 
-Nob_String_Builder sb = {0};
+static Nob_String_Builder sb = {0};
 
 bool set_branches(void)
 {
@@ -202,6 +209,14 @@ void func_branch_new(void)
     func_toggle_scene((void*) SCENE_INPUT);
 }
 
+void func_add_branch(void)
+{
+    if (new_branch_len > 0){
+        iprintf("adding branch '%s'", new_branch_name);
+        func_toggle_scene((void*) SCENE_DEFAULT);
+    }
+}
+
 void func_branch_remove(void)
 {
     if (selected_branch >= 0 && selected_branch < (int) branches.count){
@@ -238,7 +253,17 @@ void func_merge(void)
 
 // render functions
 
-void render_settings_menu(void)
+void text_layout(Clay_String string, uint16_t font_id, uint16_t font_size, uint16_t spacing)
+{
+    CLAY_TEXT(string, CLAY_TEXT_CONFIG({
+        .textColor = window_theme.text,
+        .fontId = font_id,
+        .fontSize = font_size,
+        .letterSpacing = spacing
+    }));
+}
+
+void settings_menu_layout(void)
 {
     CLAY({
         .backgroundColor = {255, 255, 255, 51},
@@ -273,7 +298,8 @@ void render_settings_menu(void)
                     CLAY_TEXT(CLAY_STRING("Settings"), CLAY_TEXT_CONFIG({
                         .textColor = window_theme.text,
                         .fontId = DEFAULT, 
-                        .fontSize = 16
+                        .fontSize = 12,
+                        .letterSpacing = 2
                     }));
                 }
                 CLAY({
@@ -303,7 +329,7 @@ void render_settings_menu(void)
     }
 }
 
-void render_input_menu(void)
+void input_menu_layout(void)
 {
     CLAY({
         .backgroundColor = {255, 255, 255, 51},
@@ -316,9 +342,8 @@ void render_input_menu(void)
             .childAlignment={CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
         },
     }){
-        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
         CLAY({
-            .id = CLAY_ID("settings_frame"),
+            .id = CLAY_ID("input_frame"),
             .layout = {
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             }
@@ -336,11 +361,7 @@ void render_input_menu(void)
                         .padding = {.left=4}
                     }
                 }){
-                    CLAY_TEXT(CLAY_STRING("Input"), CLAY_TEXT_CONFIG({
-                        .textColor = window_theme.text,
-                        .fontId = DEFAULT, 
-                        .fontSize = 16
-                    }));
+                    text_layout(CLAY_STRING("Create Branch"), DEFAULT, 12, 2);
                 }
                 CLAY({
                     .backgroundColor = Clay_Hovered()? darken_color(window_theme.danger) : window_theme.danger,
@@ -362,14 +383,80 @@ void render_input_menu(void)
             CLAY({
                 .backgroundColor = window_theme.background,
                 .layout = {
-                    .sizing = {CLAY_SIZING_FIXED(196), CLAY_SIZING_FIXED(196)}
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                    .childGap = 4
                 }
-            }){}
+            }){
+                CLAY({
+                    
+                }){
+                    snprintf(temp_buffer, sizeof(temp_buffer), "(%d/%d)", new_branch_len, NEW_BRANCH_MAX_LEN);
+                    text_layout(CLAY_STRING("Insert the name for the branch: "), DEFAULT, 12, 1);
+                    text_layout(clay_string(temp_buffer), DEFAULT, 12, 1);
+                }
+                CLAY({
+                    .backgroundColor = window_theme.secondary,
+                    .layout = {
+                        .sizing = {.width = CLAY_SIZING_FIXED(256), .height=CLAY_SIZING_FIXED(20)},
+                        .padding = CLAY_PADDING_ALL(4),
+                        .childAlignment = {.y=CLAY_ALIGN_Y_CENTER},
+                    },
+                    .border = {
+                        .color = darken_color(window_theme.secondary),
+                        .width = CLAY_BORDER_OUTSIDE(2)
+                    },
+                }){
+                    if (Clay_Hovered()){
+                        SetMouseCursor(MOUSE_CURSOR_IBEAM);
+
+                        int key = GetCharPressed();
+
+                        while (key > 0){
+                            if ((key >= 32) && (key <= 125) && (new_branch_len < NEW_BRANCH_MAX_LEN)){
+                                new_branch_name[new_branch_len] = (char)key;
+                                new_branch_name[new_branch_len+1] = '\0'; 
+                                new_branch_len++;
+                            }
+                            key = GetCharPressed(); 
+                        }
+                        if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)){
+                            new_branch_len--;
+                            if (new_branch_len < 0) new_branch_len = 0;
+                            new_branch_name[new_branch_len] = '\0';
+                        }
+                        frame_counter++;
+                    }else{
+                        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+                    }
+                    text_layout((Clay_String){false, new_branch_len, new_branch_name}, MONO_12, 12, 1);
+                    if (Clay_Hovered() && ((frame_counter/20)%2) == 0){
+                        text_layout(CLAY_STRING("_"), MONO_12, 12, 1);
+                    }
+                }
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+                    }
+                }){
+                    CLAY({
+                        .backgroundColor = Clay_Hovered()? window_theme.hover : window_theme.accent,
+                        .layout = {
+                            .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                        }
+                    }){
+                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_add_branch);
+                        text_layout(CLAY_STRING("Create"), DEFAULT, 12, 1);
+                    }
+                }
+            }
         }
     }
 }
 
-void render_branch_action_button(Clay_String string, Clay_Color color, FuncButtonData data)
+void branch_action_button_layout(Clay_String string, Clay_Color color, FuncButtonData data)
 {
     CLAY({
         .backgroundColor = Clay_Hovered()? darken_color(color) : color,
@@ -391,7 +478,7 @@ void render_branch_action_button(Clay_String string, Clay_Color color, FuncButto
     }
 }
 
-void render_action_button(Clay_String string, FuncButtonData data)
+void action_button_layout(Clay_String string, FuncButtonData data)
 {
     CLAY({
         .backgroundColor = Clay_Hovered()? window_theme.hover : window_theme.accent,
@@ -546,7 +633,7 @@ Clay_RenderCommandArray main_layout()
                     //iprintf("at start arg is %u:%p", current_scene, arg.arg);
                     Clay_OnHover(HandleArgFuncButtonInteraction, (intptr_t) &current_arg);
                     if (current_scene == SCENE_SETTINGS){
-                        render_settings_menu();
+                        settings_menu_layout();
                     }
                 }
                 CLAY({
@@ -652,9 +739,9 @@ Clay_RenderCommandArray main_layout()
                                 }){
                                     CLAY_TEXT(branch.text, CLAY_TEXT_CONFIG({
                                         .textColor = window_theme.text,
-                                        .fontId = BODY_16, 
+                                        .fontId = MONO_16, 
                                         .fontSize = 16,
-                                        .letterSpacing = 2
+                                        .letterSpacing = 1
                                     }));
                                     Clay_OnHover(HandleIndexButtonInteraction, (int) i);
                                 }
@@ -668,8 +755,8 @@ Clay_RenderCommandArray main_layout()
                                 .childGap = 64
                             }
                         }){
-                            render_action_button(CLAY_STRING("Make Backup"), func_backup);
-                            render_action_button(CLAY_STRING("Merge Backup"), func_merge);
+                            action_button_layout(CLAY_STRING("Make Backup"), func_backup);
+                            action_button_layout(CLAY_STRING("Merge Backup"), func_merge);
                         }
                     }
                     CLAY({
@@ -681,10 +768,10 @@ Clay_RenderCommandArray main_layout()
                             .padding = {.top=32}
                         }
                     }){
-                        render_branch_action_button(CLAY_STRING("New"), window_theme.accent, func_branch_new);
-                        render_branch_action_button(CLAY_STRING("Remove"), window_theme.danger, func_branch_remove);
+                        branch_action_button_layout(CLAY_STRING("New"), window_theme.accent, func_branch_new);
+                        branch_action_button_layout(CLAY_STRING("Remove"), window_theme.danger, func_branch_remove);
                         if (current_scene == SCENE_INPUT){
-                            render_input_menu();
+                            input_menu_layout();
                         }
                     }
                 }
@@ -725,10 +812,12 @@ int main(void) {
     Font fonts[_FontId_Count];
     
     fonts[DEFAULT] = GetFontDefault();
-    cwk_path_join(program_dir, "resources/Roboto-Regular.ttf", font_path, sizeof(font_path));
-    fonts[BODY_16] = LoadFontEx(font_path, 16, NULL, 400);
+    cwk_path_join(program_dir, "resources/JuliaMono-Regular.ttf", font_path, sizeof(font_path));
+    fonts[MONO_16] = LoadFontEx(font_path, 16, NULL, 400);
+    SetTextureFilter(fonts[MONO_16].texture, TEXTURE_FILTER_BILINEAR);
+    fonts[MONO_12] = LoadFontEx(font_path, 12, NULL, 400);
+    SetTextureFilter(fonts[MONO_12].texture, TEXTURE_FILTER_BILINEAR);
     
-    SetTextureFilter(fonts[BODY_16].texture, TEXTURE_FILTER_BILINEAR);
     Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
     
     cwk_path_join(program_dir, "resources/MaterialIcons/close_16.png", font_path, sizeof(font_path));
