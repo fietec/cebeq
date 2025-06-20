@@ -22,7 +22,7 @@
 #define error(msg, ...) (fprintf(stderr, "[ERROR] " msg "\n", ##__VA_ARGS__)) 
 
 typedef enum{
-    SCENE_DEFAULT,
+    SCENE_MAIN,
     SCENE_SETTINGS,
     SCENE_INPUT,
     SCENE_ABOUT,
@@ -85,7 +85,7 @@ typedef struct{
     size_t capacity;
 } Branches;
 
-static Scene current_scene = SCENE_ABOUT;
+static Scene current_scene = SCENE_MAIN;
 static char info_path[FILENAME_MAX] = {0};
 static Texture2D textures[_TextureId_Count];
 static Branches branches = {0};
@@ -242,7 +242,7 @@ void func_add_branch(void)
 {
     if (new_branch_len > 0){
         iprintf("adding branch '%s'", new_branch_name);
-        func_toggle_scene((void*) SCENE_DEFAULT);
+        func_toggle_scene((void*) SCENE_MAIN);
     }
 }
 
@@ -343,7 +343,7 @@ void settings_menu_layout(void)
                         },
                         .image = {&textures[SYMBOL_EXIT_16]}
                     }){
-                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_DEFAULT);
+                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_MAIN);
                     }
                 }
             }
@@ -403,7 +403,7 @@ void input_menu_layout(void)
                         },
                         .image = {&textures[SYMBOL_EXIT_16]}
                     }){
-                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_DEFAULT);
+                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_MAIN);
                     }
                 }
             }
@@ -534,7 +534,7 @@ void about_menu_layout(void)
                         },
                         .image = {&textures[SYMBOL_EXIT_16]}
                     }){
-                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_DEFAULT);
+                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_MAIN);
                     }
                 }
             }
