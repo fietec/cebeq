@@ -16,6 +16,7 @@
 #define NEW_BRANCH_MAX_LEN 32
 
 #define NO_COLOR ((Clay_Color) {0})
+#define TEXT_PADDING (Clay_Padding){8, 8, 4, 4}
 #define clay_string(str) (Clay_String) {false, strlen(str), str}
 
 #define error(msg, ...) (fprintf(stderr, "[ERROR] " msg "\n", ##__VA_ARGS__)) 
@@ -24,6 +25,7 @@ typedef enum{
     SCENE_DEFAULT,
     SCENE_SETTINGS,
     SCENE_INPUT,
+    SCENE_ABOUT,
 } Scene;
 
 typedef enum{
@@ -83,8 +85,7 @@ typedef struct{
     size_t capacity;
 } Branches;
 
-static ArgFuncButtonData current_arg = {0};
-static Scene current_scene = SCENE_DEFAULT;
+static Scene current_scene = SCENE_ABOUT;
 static char info_path[FILENAME_MAX] = {0};
 static Texture2D textures[_TextureId_Count];
 static Branches branches = {0};
@@ -95,8 +96,34 @@ static int frame_counter = 0;
 char new_branch_name[NEW_BRANCH_MAX_LEN+1] = {0};
 int new_branch_len = 0;
 static char temp_buffer[256] = {0};
+static char *version = NULL;
+
+static Clay_String license_text = CLAY_STRING("\
+Permission is hereby granted, free of charge, to any person obtaining a copy \n\
+of this software and associated documentation files (the \"Software\"), to deal \n\
+in the Software without restriction, including without limitation the rights \n\
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell \n\
+copies of the Software, and to permit persons to whom the Software is \n\
+furnished to do so, subject to the following conditions: \n\
+ \n\
+The above copyright notice and this permission notice shall be included in all \n\
+copies or substantial portions of the Software. \n\
+ \n\
+THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \n\
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \n\
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE \n\
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \n\
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \n\
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE \n\
+SOFTWARE.");
 
 static Nob_String_Builder sb = {0};
+
+void func_toggle_scene(void *arg)
+{
+    Scene scene = (Scene) arg;
+    current_scene = scene;
+}
 
 bool set_branches(void)
 {
@@ -181,10 +208,12 @@ void HandleIndexButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_da
     }
 }
 
-void func_toggle_scene(void *arg)
+void HandleSceneButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
 {
-    Scene scene = (Scene) arg;
-    current_scene = scene;
+    (void) id;
+    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
+        func_toggle_scene((void*) user_data);
+    }
 }
 
 // button functions
@@ -314,8 +343,7 @@ void settings_menu_layout(void)
                         },
                         .image = {&textures[SYMBOL_EXIT_16]}
                     }){
-                        current_arg = arg_func(func_toggle_scene, SCENE_DEFAULT);
-                        Clay_OnHover(HandleArgFuncButtonInteraction, (intptr_t) &current_arg);
+                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_DEFAULT);
                     }
                 }
             }
@@ -375,8 +403,7 @@ void input_menu_layout(void)
                         },
                         .image = {&textures[SYMBOL_EXIT_16]}
                     }){
-                        current_arg = arg_func(func_toggle_scene, SCENE_DEFAULT);
-                        Clay_OnHover(HandleArgFuncButtonInteraction, (intptr_t) &current_arg);
+                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_DEFAULT);
                     }
                 }
             }
@@ -449,6 +476,130 @@ void input_menu_layout(void)
                         if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_add_branch);
                         text_layout(CLAY_STRING("Create"), DEFAULT, 12, 1);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void about_menu_layout(void)
+{
+    CLAY({
+        .backgroundColor = {255, 255, 255, 51},
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
+        },
+        .layout = {
+            .sizing = {CLAY_SIZING_GROW(), CLAY_SIZING_GROW()},
+            .childAlignment={CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+        },
+    }){
+        CLAY({
+            .id = CLAY_ID("settings_frame"),
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            }
+        }){
+            CLAY({
+                .backgroundColor = window_theme.secondary,
+                .layout = {
+                    .sizing = {.width=CLAY_SIZING_GROW()},
+                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+                }
+            }){
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .padding = {.left=4}
+                    }
+                }){
+                    CLAY_TEXT(CLAY_STRING("About"), CLAY_TEXT_CONFIG({
+                        .textColor = window_theme.text,
+                        .fontId = DEFAULT, 
+                        .fontSize = 12,
+                        .letterSpacing = 2
+                    }));
+                }
+                CLAY({
+                    .backgroundColor = Clay_Hovered()? darken_color(window_theme.danger) : window_theme.danger,
+                    .layout = {
+                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                    },
+                }){
+                    CLAY({
+                        .layout = {
+                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
+                        },
+                        .image = {&textures[SYMBOL_EXIT_16]}
+                    }){
+                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_DEFAULT);
+                    }
+                }
+            }
+            CLAY({
+                .backgroundColor = window_theme.background,
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .padding = CLAY_PADDING_ALL(4),
+                    .childGap = 8
+                }
+            }){
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+                        .padding = TEXT_PADDING
+                    }
+                }){
+                    text_layout(CLAY_STRING("Cebeq v"), MONO_16, 16, 0);
+                    text_layout(clay_string(version), MONO_16, 16, 0);
+                }
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW(0, 312), .height=CLAY_SIZING_FIXED(128)},
+                        .padding = CLAY_PADDING_ALL(4)
+                    },
+                    .border = {
+                        .color = window_theme.hover,
+                        .width = CLAY_BORDER_OUTSIDE(2)
+                    }
+                }){
+                    CLAY({
+                        .backgroundColor = window_theme.background,
+                        .layout = {
+                            .padding = {.left=4, .right=2, .top=3},
+                        },
+                        .floating = {
+                            .attachTo = CLAY_ATTACH_TO_PARENT,
+                            .attachPoints = {.parent = CLAY_ATTACH_POINT_CENTER_TOP, .element = CLAY_ATTACH_POINT_CENTER_CENTER},
+                        },
+                    }){
+                        text_layout(CLAY_STRING("MIT License"), MONO_12, 12, 1);
+                    }
+                    CLAY({
+                        .layout = {
+                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                            .padding = {.left=8, .right=8, .top=10, .bottom=8},
+                            .childGap = 8
+                        },
+                        .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() },
+                    }){
+                        CLAY({
+                            .layout = {
+                                .sizing = {.width=CLAY_SIZING_GROW()},
+                                .childAlignment = {.x=CLAY_ALIGN_X_CENTER},
+                            }
+                        }){
+                            CLAY_TEXT(CLAY_STRING("Copyright (c) 2025 Constantijn de Meer"), CLAY_TEXT_CONFIG({
+                                .textColor = window_theme.text,
+                                .fontId = MONO_12,
+                                .fontSize = 12,
+                                .textAlignment = CLAY_TEXT_ALIGN_CENTER
+                            }));
+                        }
+                        text_layout(license_text, MONO_12, 12, 0);
                     }
                 }
             }
@@ -629,9 +780,7 @@ Clay_RenderCommandArray main_layout()
                         .fontId = DEFAULT,
                         .fontSize = 16
                     }));
-                    current_arg = arg_func(func_toggle_scene, SCENE_SETTINGS);
-                    //iprintf("at start arg is %u:%p", current_scene, arg.arg);
-                    Clay_OnHover(HandleArgFuncButtonInteraction, (intptr_t) &current_arg);
+                    Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_SETTINGS);
                     if (current_scene == SCENE_SETTINGS){
                         settings_menu_layout();
                     }
@@ -648,6 +797,10 @@ Clay_RenderCommandArray main_layout()
                         .fontId = DEFAULT,
                         .fontSize = 16
                     }));
+                    Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_ABOUT);
+                    if (current_scene == SCENE_ABOUT){
+                        about_menu_layout();
+                    }
                 }
             }
             
@@ -792,6 +945,14 @@ int main(void) {
         error("Could not find internal info file!\n");
         return_defer(1);
     }
+    
+    Cson *c_version = cson_get(c_info, key("version"));
+    if (!cson_is_string(c_version)){
+        eprintf("Could not find <version> field in info file!");
+        return_defer(1);
+    }
+    version = cson_get_cstring(c_version);
+    
     c_branches = cson_get(c_info, key("branches"));
     if (!cson_is_map(c_branches)){
         error("Could not find <branches> field in info file!");
@@ -849,6 +1010,7 @@ int main(void) {
         Clay_Raylib_Render(renderCommands, fonts);
         EndDrawing();
     }
+  defer:
     Clay_Raylib_Close();
     for (size_t i=0; i<_FontId_Count; ++i){
         UnloadFont(fonts[i]);
@@ -856,8 +1018,6 @@ int main(void) {
     for (size_t i=0; i<_TextureId_Count; ++i){
         UnloadTexture(textures[i]);
     }
-    return_defer(0);
-  defer:
     cleanup();
     return value;
 }
