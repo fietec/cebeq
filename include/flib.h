@@ -59,21 +59,21 @@ typedef struct{
     time_t mod_time;
 } flib_entry;
 
-bool flib_read(const char *path, flib_cont *fc);
-fsize_t flib_size(const char *path);
-bool flib_exists(const char *path);
-bool flib_isfile(const char *path);
-bool flib_isdir(const char *path);
+CBQLIB bool flib_read(const char *path, flib_cont *fc);
+CBQLIB fsize_t flib_size(const char *path);
+CBQLIB bool flib_exists(const char *path);
+CBQLIB bool flib_isfile(const char *path);
+CBQLIB bool flib_isdir(const char *path);
+ 
+CBQLIB bool create_dir(const char *path);
+CBQLIB int flib_delete_dir(const char *path);
+CBQLIB int copy_file(const char *from, const char *to);
+CBQLIB int copy_dir_rec(const char *src, const char *dest);
+CBQLIB int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore_names, size_t ignore_count);
 
-bool create_dir(const char *path);
-int flib_delete_dir(const char *path);
-int copy_file(const char *from, const char *to);
-int copy_dir_rec(const char *src, const char *dest);
-int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore_names, size_t ignore_count);
-
-bool flib_get_entry(DIR *dir, const char *path, flib_entry *entry);
-fsize_t flib_dir_size(DIR *dir, const char *path);
-fsize_t flib_dir_size_rec(DIR *dir, const char *path);
-void flib_print_entry(flib_entry entry);
+CBQLIB bool flib_get_entry(DIR *dir, const char *path, flib_entry *entry);
+CBQLIB fsize_t flib_dir_size(DIR *dir, const char *path);
+CBQLIB fsize_t flib_dir_size_rec(DIR *dir, const char *path);
+CBQLIB void flib_print_entry(flib_entry entry);
 
 #endif // _FLIB_H

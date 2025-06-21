@@ -572,7 +572,7 @@ Nob_String_View nob_sv_from_parts(const char *data, size_t count);
 #ifndef _WIN32
 #include <dirent.h>
 #else // _WIN32
-
+#ifndef NOB_NO_MINIRENT
 #define WIN32_LEAN_AND_MEAN
 #include "windows.h"
 
@@ -586,7 +586,7 @@ typedef struct DIR DIR;
 static DIR *opendir(const char *dirpath);
 static struct dirent *readdir(DIR *dirp);
 static int closedir(DIR *dirp);
-
+#endif // NOB_NO_MINIRENT
 #endif // _WIN32
 // minirent.h HEADER END ////////////////////////////////////////
 
@@ -1652,6 +1652,7 @@ bool nob_set_current_dir(const char *path)
 }
 
 // minirent.h SOURCE BEGIN ////////////////////////////////////////
+#ifndef NOB_NO_MINIRENT
 #ifdef _WIN32
 struct DIR
 {
@@ -1736,6 +1737,7 @@ int closedir(DIR *dirp)
     return 0;
 }
 #endif // _WIN32
+#endif // NOB_NO_MINIRENT
 // minirent.h SOURCE END ////////////////////////////////////////
 
 #endif // NOB_IMPLEMENTATION

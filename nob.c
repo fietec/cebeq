@@ -69,6 +69,7 @@ bool build_gui(Nob_Cmd *cmd)
     nob_cmd_append(cmd, "-o", "build/gui");
     nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore", "-Llib", "-lraylib", "-lgdi32", "-lwinmm");
     nob_cmd_append(cmd, "-Wno-unused-function"); // caused by nob.h
+    nob_cmd_append(cmd, "-D", "NOB_NO_MINIRENT");
 #ifndef _WIN32
     nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
