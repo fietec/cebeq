@@ -134,7 +134,6 @@ static State state = {
     .scene = SCENE_MAIN,
     .selected_branch = -1,
     .file_dialog = {
-        .dir_path = "D:/cdemeer/Programming/C/cebeq",
         .item_index = -1,
         .first_frame = true,
     }
@@ -1282,6 +1281,8 @@ int main(void) {
         return_defer(1);
     }
     if (!set_branches()) return_defer(1);
+    
+    memcpy(state.file_dialog.dir_path, program_dir, sizeof(state.file_dialog.dir_path));
     
     Clay_Raylib_Initialize(768, 432, "Cebeq Gui", FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
 
