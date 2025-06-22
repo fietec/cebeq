@@ -42,6 +42,7 @@ typedef enum{
     SYMBOL_REFRESH_16,
     SYMBOL_BACK_16,
     SYMBOL_FWD_16,
+    SYMBOL_DELETE_12,
     _TextureId_Count
 } TextureIds;
 
@@ -167,6 +168,16 @@ void func_toggle_scene(void *arg)
     state.scene = scene;
 }
 
+void func_new_branch_delete(size_t index)
+{
+    Files *dirs = &state.new_branch_dialog.dirs;
+    if (index >= dirs->count) return;
+    if (index < dirs->count-1){
+        memmove(&dirs->items[index], &dirs->items[index+1], (dirs->count-index-1)*sizeof(*dirs->items));
+    }
+    dirs->count--;
+}
+
 bool set_branches(void)
 {
     state.branches.count = 0;
@@ -267,6 +278,14 @@ void HandleSceneButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_da
     }
 }
 
+void HandleFileDeleteButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
+        func_new_branch_delete((size_t) user_data);
+    }
+}
+
 // button functions
 void func_refresh(void)
 {
@@ -281,7 +300,6 @@ void func_refresh(void)
         return;
     }
     (void) set_branches();
-    iprintf("Refreshed!");
 }
 
 void func_branch_exit(void)
@@ -299,9 +317,7 @@ void func_branch_new(void)
 
 void func_add_branch(void)
 {
-    if (state.new_branch_len > 0){
-        iprintf("adding branch '%s'", state.new_branch_name);
-        
+    if (state.new_branch_len > 0){        
         Cson *dirs = cson_array_new();
         for (size_t i=0; i<state.new_branch_dialog.dirs.count; ++i){
             char *dir = state.new_branch_dialog.dirs.items[i].path;
@@ -380,7 +396,6 @@ void func_dir_dialog_set(void)
     } else{
         memcpy(file.path, state.file_dialog.items.items[index].path, FILENAME_MAX);
     }
-    iprintf("Ouput: '%s'", file.path);
     nob_da_append(&state.new_branch_dialog.dirs, file);
     func_dir_dialog_exit();
 }
@@ -578,7 +593,8 @@ void input_menu_layout(void)
                 }
                 CLAY({
                     .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()}
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
                     }
                 }){
                     CLAY({
@@ -610,11 +626,28 @@ void input_menu_layout(void)
                         CLAY({
                             .layout = {
                                 .sizing = {.width = CLAY_SIZING_GROW()},
-                                .childGap = 2
+                                .childGap = 2,
+                                .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
                             }
                         }){
-                            text_layout(CLAY_STRING("-"), MONO_12, 12, 0);
-                            text_layout(clay_string(dirs.items[i].path), MONO_12, 12, 0);
+                            CLAY({
+                                .layout = {
+                                    .sizing = {.width = CLAY_SIZING_GROW()},
+                                    .childGap = 2
+                                }
+                            }){
+                                text_layout(CLAY_STRING("-"), MONO_12, 12, 0);
+                                text_layout(clay_string(dirs.items[i].path), MONO_12, 12, 0);
+                            }
+                            CLAY({
+                                .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
+                                .layout = {
+                                    .sizing = {CLAY_SIZING_FIXED(12), CLAY_SIZING_FIXED(12)}
+                                },
+                                .image = {&state.textures[SYMBOL_DELETE_12]}
+                            }){
+                                Clay_OnHover(HandleFileDeleteButtonInteraction, (intptr_t) i);
+                            }
                         }
                     }
                 }
@@ -785,7 +818,6 @@ void dir_input_menu_layout()
         }
         closedir(dir);
         fd->first_frame = false;
-        iprintf("now no longer first_frame");
     }
     CLAY({
         .backgroundColor = {255, 255, 255, 51},
@@ -816,7 +848,7 @@ void dir_input_menu_layout()
                         .padding = {.left=4}
                     }
                 }){
-                    CLAY_TEXT(CLAY_STRING("Dir Selector"), CLAY_TEXT_CONFIG({
+                    CLAY_TEXT(CLAY_STRING("Select Directory"), CLAY_TEXT_CONFIG({
                         .textColor = state.theme.text,
                         .fontId = DEFAULT, 
                         .fontSize = 12,
@@ -975,6 +1007,7 @@ void branch_action_button_layout(Clay_String string, Clay_Color color, FuncButto
             .textColor = state.theme.text,
             .fontId = DEFAULT,
             .fontSize = 16,
+            .letterSpacing = 1
         }));
         if (Clay_Hovered()){
             SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
@@ -1149,7 +1182,8 @@ Clay_RenderCommandArray main_layout()
                                 CLAY_TEXT(CLAY_STRING("Select a branch:"), CLAY_TEXT_CONFIG({
                                     .textColor = state.theme.text,
                                     .fontId = DEFAULT, 
-                                    .fontSize = 16
+                                    .fontSize = 16,
+                                    .letterSpacing = 1
                                 }));
                             }
                             CLAY({
@@ -1166,6 +1200,7 @@ Clay_RenderCommandArray main_layout()
                                     .textColor = state.theme.text,
                                     .fontId = DEFAULT, 
                                     .fontSize = 16,
+                                    .letterSpacing = 1
                                 }));
                                 CLAY({
                                     .layout = {
@@ -1313,6 +1348,8 @@ int main(void) {
     state.textures[SYMBOL_BACK_16] = LoadTexture(font_path);
     cwk_path_join(program_dir, "resources/MaterialIcons/arrow_forward_16.png", font_path, sizeof(font_path));
     state.textures[SYMBOL_FWD_16] = LoadTexture(font_path);
+    cwk_path_join(program_dir, "resources/MaterialIcons/delete_12.png", font_path, sizeof(font_path));
+    state.textures[SYMBOL_DELETE_12] = LoadTexture(font_path);
     
     while (!WindowShouldClose()) {
         Clay_SetLayoutDimensions((Clay_Dimensions) {

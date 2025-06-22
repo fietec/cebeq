@@ -1,30 +1,11 @@
 {
     "version": "0.0.2",
     "branches": {
-        "content": {
-            "last_id": 2,
-            "dirs": [
-                "c:/users/constantijn/desktop",
-                "d:/cdemeer/geoguessr" 
-            ],
-            "backups": [
-                "d:\\testing\\content_1",
-                "d:\\testing\\content_2" 
-            ] 
-        },
-        "geoguessr": {
-            "last_id": 0,
-            "dirs": [
-                "D:\\cdemeer\\geoguessr" 
-            ],
-            "backups": [
-            ] 
-        },
         "main": {
             "last_id": 0,
             "dirs": [
-                "D:\\cdemeer\\geoguessr",
-                "D:\\cdemeer\\Programming\\minecraft" 
+                "d:\\cdemeer\\Programming",
+                "d:\\cdemeer\\studium" 
             ],
             "backups": [
             ] 
