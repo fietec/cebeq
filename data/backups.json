@@ -1,14 +1,5 @@
 {
     "version": "0.0.2",
     "branches": {
-        "main": {
-            "last_id": 0,
-            "dirs": [
-                "d:\\cdemeer\\Programming",
-                "d:\\cdemeer\\studium" 
-            ],
-            "backups": [
-            ] 
-        } 
     } 
-}
+} 

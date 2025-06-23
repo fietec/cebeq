@@ -141,11 +141,14 @@ typedef struct{
 
 static State state = {
     .theme = charcoal_teal,
-    .scene = SCENE_MAIN,
+    .scene = SCENE_CONFIRM,
     .selected_branch = -1,
     .file_dialog = {
         .item_index = -1,
         .first_frame = true,
+    },
+    .confirm_dialog = {
+        .question = CLAY_STRING("Question goes here.."),
     }
 };
 
@@ -427,13 +430,21 @@ void func_dir_dialog_set(void)
 void func_confirm_yes(void)
 {
     state.confirm_dialog.result = true;
-    state.confirm_dialog.on_exit();
+    if (state.confirm_dialog.on_exit != NULL){
+        state.confirm_dialog.on_exit();
+    } else{
+        func_toggle_scene((void*) state.prev_scene);
+    }
 }
 
 void func_confirm_no(void)
 {
     state.confirm_dialog.result = false;
-    state.confirm_dialog.on_exit();
+    if (state.confirm_dialog.on_exit != NULL){
+        state.confirm_dialog.on_exit();
+    } else{
+        func_toggle_scene((void*) state.prev_scene);
+    }
 }
 
 void func_backup(void)
