@@ -28,6 +28,7 @@ typedef enum{
     SCENE_NEW,
     SCENE_FILE,
     SCENE_ABOUT,
+    SCENE_CONFIRM,
 } Scene;
 
 typedef enum{
@@ -112,6 +113,12 @@ typedef struct{
 } NewBranchDialog;
 
 typedef struct{
+    bool result;
+    void (*on_exit)(void);
+    Clay_String question;
+} ConfirmDialog;
+
+typedef struct{
     Theme theme;
     Branches branches;
     int selected_branch;
@@ -126,8 +133,10 @@ typedef struct{
     int new_branch_len;
     char temp_buffer[256];
     char *version;
+    Nob_String_Builder sb;
     FileDialog file_dialog;
     NewBranchDialog new_branch_dialog;
+    ConfirmDialog confirm_dialog;
 } State;
 
 static State state = {
@@ -158,8 +167,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \n\
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \n\
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE \n\
 SOFTWARE.");
-
-static Nob_String_Builder sb = {0};
 
 void func_toggle_scene(void *arg)
 {
@@ -200,21 +207,21 @@ bool set_branches(void)
             return 1;
         }
         size_t dir_count = cson_len(dirs);
-        sb.count = 0;
-        nob_sb_append_cstr(&sb, name);
-        nob_sb_append_cstr(&sb, ": [");
+        state.sb.count = 0;
+        nob_sb_append_cstr(&state.sb, name);
+        nob_sb_append_cstr(&state.sb, ": [");
         for (size_t i=0; i<dir_count; ++i){
             if (i > 0){
-                nob_sb_append_cstr(&sb, ", ");
+                nob_sb_append_cstr(&state.sb, ", ");
             }
-            nob_sb_append_cstr(&sb, "'");
-            nob_sb_append_cstr(&sb, cson_get_cstring(dirs, index(i)));
-            nob_sb_append_cstr(&sb, "'");
+            nob_sb_append_cstr(&state.sb, "'");
+            nob_sb_append_cstr(&state.sb, cson_get_cstring(dirs, index(i)));
+            nob_sb_append_cstr(&state.sb, "'");
         }
-        nob_sb_append_cstr(&sb, "]");
-        nob_sb_append_null(&sb);
+        nob_sb_append_cstr(&state.sb, "]");
+        nob_sb_append_null(&state.sb);
         Branch b = {
-            .text = (Clay_String) {false, sb.count-1, strdup(sb.items)},
+            .text = (Clay_String) {false, state.sb.count-1, strdup(state.sb.items)},
             .name = name
         };
         nob_da_append(&state.branches, b);
@@ -351,6 +358,23 @@ void func_branch_remove(void)
     }
 }
 
+void func_branch_remove_after_confirm(void)
+{
+    func_toggle_scene((void*) SCENE_MAIN);
+    if (state.confirm_dialog.result){
+        func_branch_remove();
+    }
+}
+
+void func_branch_remove_before_confirm(void)
+{
+    if (state.selected_branch >= 0 && state.selected_branch < (int) state.branches.count){
+        state.confirm_dialog.question = CLAY_STRING("Do you really want to delete this branch?");
+        state.confirm_dialog.on_exit = &func_branch_remove_after_confirm;
+        func_toggle_scene((void*) SCENE_CONFIRM);
+    }
+}
+
 void func_task_loc_open(void)
 {
     char command[FILENAME_MAX + 32] = {0};
@@ -398,6 +422,18 @@ void func_dir_dialog_set(void)
     }
     nob_da_append(&state.new_branch_dialog.dirs, file);
     func_dir_dialog_exit();
+}
+
+void func_confirm_yes(void)
+{
+    state.confirm_dialog.result = true;
+    state.confirm_dialog.on_exit();
+}
+
+void func_confirm_no(void)
+{
+    state.confirm_dialog.result = false;
+    state.confirm_dialog.on_exit();
 }
 
 void func_backup(void)
@@ -993,6 +1029,99 @@ void dir_input_menu_layout()
     }
 }
 
+void confirm_menu_layout(void)
+{
+    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+    CLAY({
+        .backgroundColor = {255, 255, 255, 51},
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
+        },
+        .layout = {
+            .sizing = {CLAY_SIZING_GROW(), CLAY_SIZING_GROW()},
+            .childAlignment={CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+        },
+    }){
+        CLAY({
+            .id = CLAY_ID("input_frame"),
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            }
+        }){
+            CLAY({
+                .backgroundColor = state.theme.secondary,
+                .layout = {
+                    .sizing = {.width=CLAY_SIZING_GROW()},
+                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+                }
+            }){
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .padding = {.left=4}
+                    }
+                }){
+                    text_layout(CLAY_STRING("Confirm"), DEFAULT, 12, 2);
+                }
+                CLAY({
+                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
+                    .layout = {
+                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                    },
+                }){
+                    CLAY({
+                        .layout = {
+                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
+                        },
+                        .image = {&state.textures[SYMBOL_EXIT_16]}
+                    }){
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_no);
+                    }
+                }
+            }
+            CLAY({
+                .backgroundColor = state.theme.background,
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                    .childGap = 4
+                }
+            }){
+                text_layout(state.confirm_dialog.question, DEFAULT, 12, 1);
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .childAlignment = {.x=CLAY_ALIGN_X_CENTER},
+                        .childGap = 16
+                    }
+                }){
+                    CLAY({
+                        .backgroundColor = Clay_Hovered()? state.theme.hover : state.theme.accent,
+                        .layout = {
+                            .padding = TEXT_PADDING,
+                        }
+                    }){
+                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_yes);
+                        text_layout(CLAY_STRING("Yes"), DEFAULT, 12, 1);
+                    }
+                    CLAY({
+                        .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
+                        .layout = {
+                            .padding = TEXT_PADDING,
+                        }
+                    }){
+                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_no);
+                        text_layout(CLAY_STRING("No"), DEFAULT, 12, 1);
+                    }
+                }
+            }
+        }
+    }
+}
+
 void branch_action_button_layout(Clay_String string, Clay_Color color, FuncButtonData data)
 {
     CLAY({
@@ -1263,7 +1392,7 @@ Clay_RenderCommandArray main_layout()
                         }
                     }){
                         branch_action_button_layout(CLAY_STRING("New"), state.theme.accent, func_branch_new);
-                        branch_action_button_layout(CLAY_STRING("Remove"), state.theme.danger, func_branch_remove);
+                        branch_action_button_layout(CLAY_STRING("Remove"), state.theme.danger, func_branch_remove_before_confirm);
                     }
                 }
             }   
@@ -1281,6 +1410,9 @@ Clay_RenderCommandArray main_layout()
             } break;
             case SCENE_ABOUT:{
                 about_menu_layout();
+            } break;
+            case SCENE_CONFIRM:{
+                confirm_menu_layout();
             } break;
             default:{
                 eprintf("Invalid scene state!");
