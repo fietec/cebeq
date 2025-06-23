@@ -22,7 +22,7 @@
 
 #define PROGRAM_NAME "cebeq"
 #define INFO_FILE "." PROGRAM_NAME
-#define BACKUPS_JSON "data/backups.json"
+#define BACKUPS_JSON "data/info.json"
 
 #define s_bool(s) ((s)>0? "true": "false")
 
