@@ -17,6 +17,7 @@
 #define NEW_BRANCH_MAX_LEN 32
 
 #define NO_COLOR ((Clay_Color) {0})
+#define BLUR_COLOR ((Clay_Color) {255, 255, 255, 51})
 #define TEXT_PADDING (Clay_Padding){8, 8, 4, 4}
 #define clay_string(str) (Clay_String) {false, strlen(str), str}
 
@@ -29,6 +30,7 @@ typedef enum{
     SCENE_FILE,
     SCENE_ABOUT,
     SCENE_CONFIRM,
+    SCENE_BACKUP,
 } Scene;
 
 typedef enum{
@@ -44,6 +46,7 @@ typedef enum{
     SYMBOL_BACK_16,
     SYMBOL_FWD_16,
     SYMBOL_DELETE_12,
+    SYMBOL_CHECK_12,
     _TextureId_Count
 } TextureIds;
 
@@ -106,6 +109,7 @@ typedef struct{
     Files items;
     int item_index;
     bool first_frame;
+    void (*on_set)(void);
 } FileDialog;
 
 typedef struct{
@@ -117,6 +121,18 @@ typedef struct{
     void (*on_exit)(void);
     Clay_String question;
 } ConfirmDialog;
+
+typedef struct{
+    // output
+    char *branch_name;
+    char dest[FILENAME_MAX];
+    char prev[FILENAME_MAX];
+    // internal
+    int dest_len;
+    int selected_backup;
+    Branches backups;
+    bool prev_enable;
+} BackupDialog;
 
 typedef struct{
     Theme theme;
@@ -137,11 +153,12 @@ typedef struct{
     FileDialog file_dialog;
     NewBranchDialog new_branch_dialog;
     ConfirmDialog confirm_dialog;
+    BackupDialog backup_dialog;
 } State;
 
 static State state = {
     .theme = charcoal_teal,
-    .scene = SCENE_CONFIRM,
+    .scene = SCENE_MAIN,
     .selected_branch = -1,
     .file_dialog = {
         .item_index = -1,
@@ -149,6 +166,9 @@ static State state = {
     },
     .confirm_dialog = {
         .question = CLAY_STRING("Question goes here.."),
+    },
+    .backup_dialog = {
+        .prev_enable = true
     }
 };
 
@@ -186,6 +206,24 @@ void func_new_branch_delete(size_t index)
         memmove(&dirs->items[index], &dirs->items[index+1], (dirs->count-index-1)*sizeof(*dirs->items));
     }
     dirs->count--;
+}
+
+void func_new_branch_set(void)
+{
+    int index = state.file_dialog.item_index;
+    File file = {0};
+    if (index < 0){
+        memcpy(file.path, state.file_dialog.dir_path, FILENAME_MAX);
+    } else{
+        memcpy(file.path, state.file_dialog.items.items[index].path, FILENAME_MAX);
+    }
+    nob_da_append(&state.new_branch_dialog.dirs, file);
+}
+
+void func_new_branch_add(void)
+{
+    state.file_dialog.on_set = func_new_branch_set;
+    func_toggle_scene((void*) SCENE_FILE);
 }
 
 bool set_branches(void)
@@ -240,60 +278,6 @@ Clay_Color darken_color(Clay_Color color)
 {
     const float factor = 0.8f;
     return (Clay_Color){color.r*factor, color.g*factor, color.b*factor, color.a};
-}
-
-void HandleFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
-{
-    (void) id;
-    FuncButtonData button_data = (FuncButtonData)user_data;
-    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
-        if (button_data != NULL) button_data();
-    }
-}
-
-void HandleArgFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
-{
-    (void) id;
-    ArgFuncButtonData *button_data = (ArgFuncButtonData*) user_data;
-    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
-        if (button_data != NULL && button_data->func != NULL){
-            button_data->func(button_data->arg);
-        }
-    }
-}
-
-void HandleBranchButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
-{
-    (void) id;
-    int index = (int) user_data;
-    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
-        state.selected_branch = index;
-    }
-}
-
-void HandleFileButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
-{
-    (void) id;
-    int index = (int) user_data;
-    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
-        state.file_dialog.item_index = index;
-    }
-}
-
-void HandleSceneButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
-{
-    (void) id;
-    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
-        func_toggle_scene((void*) user_data);
-    }
-}
-
-void HandleFileDeleteButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
-{
-    (void) id;
-    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
-        func_new_branch_delete((size_t) user_data);
-    }
 }
 
 // button functions
@@ -399,9 +383,10 @@ void func_dir_dialog_exit(void)
 
 void func_dir_dialog_back(void)
 {
-    (void) get_parent_dir(state.file_dialog.dir_path, state.file_dialog.dir_path, sizeof(state.file_dialog.dir_path));
+    (void) get_parent_dir(state.file_dialog.dir_path, state.file_dialog.dir_path, FILENAME_MAX);
     state.file_dialog.first_frame = true;
     state.file_dialog.items.count = 0;
+    state.file_dialog.item_index = -1;
 }
 
 void func_dir_dialog_forward(void)
@@ -411,19 +396,13 @@ void func_dir_dialog_forward(void)
         memcpy(state.file_dialog.dir_path, state.file_dialog.items.items[index].path, FILENAME_MAX);
         state.file_dialog.first_frame = true;
         state.file_dialog.items.count = 0;
+        state.file_dialog.item_index = -1;
     }
 }
 
 void func_dir_dialog_set(void)
-{
-    int index = state.file_dialog.item_index;
-    File file = {0};
-    if (index < 0){
-        memcpy(file.path, state.file_dialog.dir_path, FILENAME_MAX);
-    } else{
-        memcpy(file.path, state.file_dialog.items.items[index].path, FILENAME_MAX);
-    }
-    nob_da_append(&state.new_branch_dialog.dirs, file);
+{   
+    if (state.file_dialog.on_set != NULL) state.file_dialog.on_set();
     func_dir_dialog_exit();
 }
 
@@ -447,14 +426,137 @@ void func_confirm_no(void)
     }
 }
 
-void func_backup(void)
+void func_backup_dialog_init(void)
 {
-    printf("Backup!\n");
+    if (state.selected_branch >= 0){
+        BackupDialog *bd = &state.backup_dialog;
+        bd->selected_backup = -1;
+        bd->branch_name = (char*) state.branches.items[state.selected_branch].name;
+        bd->prev_enable = false;
+        
+        Cson *backups = cson_get(state.cson_branches, key(bd->branch_name), key("backups"));
+        if (!cson_is_array(backups)){
+            eprintf("Invalid branch structure of branch '%s'!", bd->branch_name);
+            return;
+        }
+        size_t len = cson_len(backups);
+        for (size_t i=0; i<len; ++i){
+            char *backup_path = cson_get_cstring(backups, index(i));
+            Branch backup;
+            backup.name = backup_path;
+            backup.text = clay_string(backup_path);
+            nob_da_append(&bd->backups, backup);
+        }
+        func_toggle_scene((void*) SCENE_BACKUP);
+    }
+}
+
+void func_backup_dialog_set_path(void)
+{
+    int index = state.file_dialog.item_index;
+    if (index < 0){
+        memcpy(state.backup_dialog.dest, state.file_dialog.dir_path, sizeof(state.backup_dialog.dest));
+    } else{
+        memcpy(state.backup_dialog.dest, state.file_dialog.items.items[index].path, sizeof(state.backup_dialog.dest));
+    }
+    state.backup_dialog.dest_len = strlen(state.backup_dialog.dest);
+}
+
+void func_backup_dialog_exit(void)
+{
+    state.backup_dialog.backups.count = 0;
+    state.backup_dialog.dest_len = 0;
+    func_toggle_scene((void*) SCENE_MAIN);
+}
+
+void func_backup_dialog_select(void)
+{
+    state.file_dialog.on_set = func_backup_dialog_set_path;
+    func_toggle_scene((void*) SCENE_FILE);
+}
+
+void func_backup_dialog_toggle(void)
+{
+    state.backup_dialog.prev_enable = !state.backup_dialog.prev_enable;
+}
+
+void func_backup_dialog_parent_select(int index)
+{
+    if (index < (int) state.backup_dialog.backups.count){
+        state.backup_dialog.selected_backup = index;
+    }
+}
+
+void func_backup_dialog_create(void)
+{
+    iprintf("Create backup");
 }
 
 void func_merge(void)
 {
-    printf("Merge!\n");
+    iprintf("Merge!");
+}
+
+void HandleFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    FuncButtonData button_data = (FuncButtonData)user_data;
+    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
+        if (button_data != NULL) button_data();
+    }
+}
+
+void HandleArgFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    ArgFuncButtonData *button_data = (ArgFuncButtonData*) user_data;
+    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
+        if (button_data != NULL && button_data->func != NULL){
+            button_data->func(button_data->arg);
+        }
+    }
+}
+
+void HandleBranchButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    int index = (int) user_data;
+    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
+        state.selected_branch = index;
+    }
+}
+
+void HandleFileButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    int index = (int) user_data;
+    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
+        state.file_dialog.item_index = index;
+    }
+}
+
+void HandleSceneButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
+        func_toggle_scene((void*) user_data);
+    }
+}
+
+void HandleFileDeleteButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
+        func_new_branch_delete((size_t) user_data);
+    }
+}
+
+void HandleParentSelectInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
+        func_backup_dialog_parent_select((int) user_data);
+    }
 }
 
 // render functions
@@ -472,7 +574,7 @@ void text_layout(Clay_String string, uint16_t font_id, uint16_t font_size, uint1
 void settings_menu_layout(void)
 {
     CLAY({
-        .backgroundColor = {255, 255, 255, 51},
+        .backgroundColor = BLUR_COLOR,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -537,7 +639,7 @@ void settings_menu_layout(void)
 void input_menu_layout(void)
 {
     CLAY({
-        .backgroundColor = {255, 255, 255, 51},
+        .backgroundColor = BLUR_COLOR,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -658,7 +760,7 @@ void input_menu_layout(void)
                         }
                     }){
                         if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
-                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t)SCENE_FILE);
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_new_branch_add);
                         text_layout(CLAY_STRING("Add"), DEFAULT, 12, 1);
                     }
                 }
@@ -723,7 +825,7 @@ void input_menu_layout(void)
 void about_menu_layout(void)
 {
     CLAY({
-        .backgroundColor = {255, 255, 255, 51},
+        .backgroundColor = BLUR_COLOR,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -855,6 +957,7 @@ void dir_input_menu_layout()
             return;
         }
         flib_entry entry;
+        fd->items.count = 0;
         while (flib_get_entry(dir, fd->dir_path, &entry)){
             if (entry.type == FLIB_DIR){
                 File file;
@@ -867,7 +970,7 @@ void dir_input_menu_layout()
         fd->first_frame = false;
     }
     CLAY({
-        .backgroundColor = {255, 255, 255, 51},
+        .backgroundColor = BLUR_COLOR,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -1000,6 +1103,25 @@ void dir_input_menu_layout()
                             text_layout(clay_string(file->name), MONO_12, 12, 0);
                         }
                     }
+                    if (IsKeyPressed(KEY_DOWN) || IsKeyPressedRepeat(KEY_DOWN)){
+                        if (fd->item_index < (int) fd->items.count-1){
+                            fd->item_index++;
+                        }
+                    }
+                    if (IsKeyPressed(KEY_UP) || IsKeyPressedRepeat(KEY_UP)){
+                        if (fd->item_index > 0){
+                            fd->item_index--;
+                        }
+                    }
+                    if (IsKeyPressed(KEY_RIGHT) && fd->item_index >= 0){
+                        func_dir_dialog_forward();
+                    }
+                    if (IsKeyPressed(KEY_LEFT)){
+                        func_dir_dialog_back();
+                    }
+                    if (IsKeyPressed(KEY_ENTER)){
+                        func_dir_dialog_set();
+                    }
                 }
                 CLAY({
                     // status bar
@@ -1044,7 +1166,7 @@ void confirm_menu_layout(void)
 {
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
     CLAY({
-        .backgroundColor = {255, 255, 255, 51},
+        .backgroundColor = BLUR_COLOR,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -1126,6 +1248,212 @@ void confirm_menu_layout(void)
                         if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_no);
                         text_layout(CLAY_STRING("No"), DEFAULT, 12, 1);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void backup_dialog_layout(void)
+{
+    BackupDialog *bd = &state.backup_dialog;
+    CLAY({
+        .backgroundColor = BLUR_COLOR,
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
+        },
+        .layout = {
+            .sizing = {CLAY_SIZING_GROW(), CLAY_SIZING_GROW()},
+            .childAlignment={CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+        },
+    }){
+        CLAY({
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            }
+        }){
+            CLAY({
+                .backgroundColor = state.theme.secondary,
+                .layout = {
+                    .sizing = {.width=CLAY_SIZING_GROW()},
+                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+                }
+            }){
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .padding = {.left=4}
+                    }
+                }){
+                    CLAY_TEXT(CLAY_STRING("Backup"), CLAY_TEXT_CONFIG({
+                        .textColor = state.theme.text,
+                        .fontId = DEFAULT, 
+                        .fontSize = 12,
+                        .letterSpacing = 2
+                    }));
+                }
+                CLAY({
+                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
+                    .layout = {
+                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                    },
+                }){
+                    CLAY({
+                        .layout = {
+                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
+                        },
+                        .image = {&state.textures[SYMBOL_EXIT_16]}
+                    }){
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_exit);
+                    }
+                }
+            }
+            CLAY({
+                .backgroundColor = state.theme.background,
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .padding = CLAY_PADDING_ALL(4),
+                    .childGap = 4
+                }
+            }){
+                text_layout(CLAY_STRING("Enter a destination:"), DEFAULT, 12, 1);
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .padding = CLAY_PADDING_ALL(6),
+                        .childGap = 4
+                    },
+                    .border = {.color=state.theme.hover, .width=CLAY_BORDER_OUTSIDE(2)},
+                }){
+                    CLAY({
+                        .backgroundColor = state.theme.secondary,
+                        .layout = {
+                            .sizing = {.width = CLAY_SIZING_GROW(256), .height=CLAY_SIZING_FIXED(20)},
+                            .padding = CLAY_PADDING_ALL(6),
+                            .childAlignment = {.y=CLAY_ALIGN_Y_CENTER},
+                        },
+                        .border = {
+                            .color = darken_color(state.theme.secondary),
+                            .width = CLAY_BORDER_OUTSIDE(2)
+                        },
+                    }){
+                        if (Clay_Hovered()){
+                            SetMouseCursor(MOUSE_CURSOR_IBEAM);
+
+                            int key = GetCharPressed();
+
+                            while (key > 0){
+                                if ((key >= 32) && (key <= 125) && (bd->dest_len < FILENAME_MAX)){
+                                    bd->dest[bd->dest_len] = (char)key;
+                                    bd->dest[bd->dest_len+1] = '\0'; 
+                                    bd->dest_len++;
+                                }
+                                key = GetCharPressed(); 
+                            }
+                            if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)){
+                                bd->dest_len--;
+                                if (bd->dest_len < 0) bd->dest_len = 0;
+                                bd->dest[bd->dest_len] = '\0';
+                            }
+                            state.frame_counter++;
+                        }else{
+                            SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+                        }
+                        text_layout((Clay_String){false, bd->dest_len, bd->dest}, MONO_12, 12, 1);
+                        if (Clay_Hovered() && ((state.frame_counter/20)%2) == 0){
+                            text_layout(CLAY_STRING("_"), MONO_12, 12, 1);
+                        }
+                    }
+                    CLAY({
+                        .backgroundColor = Clay_Hovered()? state.theme.hover : state.theme.accent,
+                        .layout = {
+                            .padding = TEXT_PADDING
+                        }
+                    }){
+                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        text_layout(CLAY_STRING("Select"), DEFAULT, 12, 1);
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_select);
+                    }
+                }
+                CLAY({
+                    .layout = {
+                        .childGap = 4,
+                    }
+                }){
+                    text_layout(CLAY_STRING("Create with parent:"), DEFAULT, 12, 1);
+                    CLAY({
+                        .backgroundColor = state.theme.secondary,
+                        .layout = {
+                            .sizing = {CLAY_SIZING_FIXED(12), CLAY_SIZING_FIXED(12)},
+                            .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
+                        },
+                        .border = {.color=darken_color(state.theme.secondary), .width=CLAY_BORDER_OUTSIDE(2)}
+                    }){
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_toggle);
+                        if (state.backup_dialog.prev_enable){
+                            CLAY({
+                                .backgroundColor = state.theme.text,
+                                .layout = {
+                                    .sizing = {CLAY_SIZING_FIXED(12), CLAY_SIZING_FIXED(12)}
+                                },
+                                .image = {&state.textures[SYMBOL_CHECK_12]}
+                            }){}
+                        }
+                    }
+                }
+                CLAY({
+                    .layout = {
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                        .sizing = {.width=CLAY_SIZING_GROW(), .height=CLAY_SIZING_FIXED(20*4.5)},
+                    },
+                    .border = {
+                        .color = state.theme.hover,
+                        .width = CLAY_BORDER_OUTSIDE(2)
+                    },
+                    .clip = {.vertical = true, .childOffset = Clay_GetScrollOffset()},
+                }){
+                    for (size_t i=0; i<state.backup_dialog.backups.count; ++i){
+                        Branch backup = state.backup_dialog.backups.items[i];
+                        CLAY({
+                            .backgroundColor = (int) i == state.backup_dialog.selected_backup? state.theme.hover : Clay_Hovered()? state.theme.secondary : NO_COLOR,
+                            .layout = {
+                                .sizing = {.width=CLAY_SIZING_GROW()},
+                                .padding = TEXT_PADDING
+                            }
+                        }){
+                            Clay_OnHover(HandleParentSelectInteraction, (intptr_t) i);
+                            text_layout(backup.text, MONO_12, 12, 0);
+                        }
+                    }
+                    if (!state.backup_dialog.prev_enable){
+                        CLAY({
+                            .backgroundColor = {255, 255, 255, 128},
+                            .layout = {
+                                .sizing = {CLAY_SIZING_GROW(), CLAY_SIZING_GROW()}
+                            },
+                            .floating = {
+                                .attachTo = CLAY_ATTACH_TO_PARENT,
+                            }
+                        }){}
+                    }
+                }
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .childAlignment = {.x=CLAY_ALIGN_X_CENTER}
+                    }
+                }){
+                    CLAY({
+                        .backgroundColor = Clay_Hovered()? state.theme.hover : state.theme.accent,
+                        .layout = {
+                            .padding = TEXT_PADDING
+                        }
+                    }){
+                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_create);
+                        text_layout(CLAY_STRING("Create"), DEFAULT, 16, 1);
                     }
                 }
             }
@@ -1389,7 +1717,7 @@ Clay_RenderCommandArray main_layout()
                                 .childGap = 64
                             }
                         }){
-                            action_button_layout(CLAY_STRING("Make Backup"), func_backup);
+                            action_button_layout(CLAY_STRING("Make Backup"), func_backup_dialog_init);
                             action_button_layout(CLAY_STRING("Merge Backup"), func_merge);
                         }
                     }
@@ -1425,6 +1753,9 @@ Clay_RenderCommandArray main_layout()
             case SCENE_CONFIRM:{
                 confirm_menu_layout();
             } break;
+            case SCENE_BACKUP:{
+                backup_dialog_layout();
+            } break;
             default:{
                 eprintf("Invalid scene state!");
                 CloseWindow();
@@ -1438,7 +1769,7 @@ int main(void) {
     if (!setup()) return 1;
     
     int value = 0;    
-    cwk_path_join(program_dir, "data/backups.json", state.info_path, sizeof(state.info_path));
+    cwk_path_join(program_dir, BACKUPS_JSON, state.info_path, sizeof(state.info_path));
     
     state.cson_info = cson_read(state.info_path);
     if (state.cson_info == NULL){
@@ -1493,6 +1824,12 @@ int main(void) {
     state.textures[SYMBOL_FWD_16] = LoadTexture(font_path);
     cwk_path_join(program_dir, "resources/MaterialIcons/delete_12.png", font_path, sizeof(font_path));
     state.textures[SYMBOL_DELETE_12] = LoadTexture(font_path);
+    cwk_path_join(program_dir, "resources/MaterialIcons/check_12.png", font_path, sizeof(font_path));
+    state.textures[SYMBOL_CHECK_12] = LoadTexture(font_path);
+    
+    cwk_path_join(program_dir, "resources/icon.png", font_path, sizeof(font_path));
+    Image icon = LoadImage(font_path);
+    SetWindowIcon(icon);
     
     while (!WindowShouldClose()) {
         Clay_SetLayoutDimensions((Clay_Dimensions) {
@@ -1526,8 +1863,10 @@ int main(void) {
     for (size_t i=0; i<_TextureId_Count; ++i){
         UnloadTexture(state.textures[i]);
     }
+    UnloadImage(icon);
     free(state.file_dialog.items.items);
     free(state.new_branch_dialog.dirs.items);
+    free(state.backup_dialog.backups.items);
     cleanup();
     return value;
 }

@@ -26,7 +26,6 @@ volatile int worker_done = 0;
 bool setup(void)
 {
     (void) cson_current_arena;
-    //cwk_path_set_style(CWK_STYLE_UNIX);
     
     if (!get_exe_path(program_dir, sizeof(program_dir))){
         eprintf("Failed to retrieve executable path!");
