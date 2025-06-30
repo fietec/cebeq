@@ -131,7 +131,7 @@ int main(int argc, char **argv)
     if (!setup()) return_defer(1);
     
     char info_path[FILENAME_MAX] = {0};
-    cwk_path_join(program_dir, "data/backups.json", info_path, sizeof(info_path));
+    cwk_path_join(program_dir, BACKUPS_JSON, info_path, sizeof(info_path));
     
     Cson *info = cson_read(info_path);
     if (info == NULL){

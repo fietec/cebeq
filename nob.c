@@ -24,7 +24,7 @@ void append_head(Nob_Cmd *cmd)
 {
     nob_cmd_append(cmd, "gcc", "-std=gnu23");
     nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow"); // definetly not cheating here..    
-    nob_cmd_append(cmd, "-I", "./include", "-I", "./thirdparty", "-I.");
+    nob_cmd_append(cmd, "-I", "./include", "-I.");
     //nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG"); // remove this in production build
 }
 
