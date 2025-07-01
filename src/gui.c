@@ -2,12 +2,13 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <message_queue.h>
 #include <cebeq.h>
 #include <cwalk.h>
 #include <cson.h>
 #include <nob.h>
 #include <flib.h>
+#include <threading.h>
+#include <message_queue.h>
 
 #include <raylib.h>
 #define CLAY_IMPLEMENTATION
@@ -21,6 +22,7 @@
 #define TEXT_PADDING (Clay_Padding){8, 8, 4, 4}
 #define clay_string(str) (Clay_String) {false, strlen(str), str}
 
+#define info(msg, ...) (fprintf(stderr, "[INFO] " msg "\n", ##__VA_ARGS__)) 
 #define error(msg, ...) (fprintf(stderr, "[ERROR] " msg "\n", ##__VA_ARGS__)) 
 
 typedef enum{
@@ -31,6 +33,7 @@ typedef enum{
     SCENE_ABOUT,
     SCENE_CONFIRM,
     SCENE_BACKUP,
+    SCENE_RUN
 } Scene;
 
 typedef enum{
@@ -104,6 +107,12 @@ typedef struct{
 } Files;
 
 typedef struct{
+    char **items;
+    size_t count; 
+    size_t capacity;
+} Log;
+
+typedef struct{
     char dir_path[FILENAME_MAX];
     File file;
     Files items;
@@ -132,7 +141,17 @@ typedef struct{
     int selected_backup;
     Branches backups;
     bool prev_enable;
+    bool is_backup;
 } BackupDialog;
+
+typedef struct{
+    thread_fn fn;
+    thread_args_t args;
+    thread_t worker;
+    char msg[MAX_MSG_LEN];
+    Log log;
+    bool running;
+} RunDialog;
 
 typedef struct{
     Theme theme;
@@ -154,6 +173,7 @@ typedef struct{
     NewBranchDialog new_branch_dialog;
     ConfirmDialog confirm_dialog;
     BackupDialog backup_dialog;
+    RunDialog run_dialog;
 } State;
 
 static State state = {
@@ -455,9 +475,9 @@ void func_backup_dialog_set_path(void)
 {
     int index = state.file_dialog.item_index;
     if (index < 0){
-        memcpy(state.backup_dialog.dest, state.file_dialog.dir_path, sizeof(state.backup_dialog.dest));
+        cwk_path_normalize(state.file_dialog.dir_path, state.backup_dialog.dest, sizeof(state.backup_dialog.dest));
     } else{
-        memcpy(state.backup_dialog.dest, state.file_dialog.items.items[index].path, sizeof(state.backup_dialog.dest));
+        cwk_path_normalize(state.file_dialog.items.items[index].path, state.backup_dialog.dest, sizeof(state.backup_dialog.dest));
     }
     state.backup_dialog.dest_len = strlen(state.backup_dialog.dest);
 }
@@ -484,17 +504,63 @@ void func_backup_dialog_parent_select(int index)
 {
     if (index < (int) state.backup_dialog.backups.count){
         state.backup_dialog.selected_backup = index;
+        cwk_path_normalize(state.backup_dialog.backups.items[index].name, state.backup_dialog.prev, sizeof(state.backup_dialog.prev));
     }
+}
+
+void func_backup_dialog_backup(void)
+{
+    state.backup_dialog.is_backup = true;
+    func_backup_dialog_init();
+}
+
+void func_backup_dialog_merge(void)
+{
+    state.backup_dialog.is_backup = false;
+    func_backup_dialog_init();
+}
+
+void func_run_dialog_init(void)
+{
+    RunDialog *rn = &state.run_dialog;
+    msgq_init();
+    thread_create(&rn->worker, rn->fn, &rn->args);
+    state.run_dialog.running = true;
+    worker_done = false;
+}
+
+void func_run_dialog_exit(void)
+{
+    RunDialog *rn = &state.run_dialog;
+    for (size_t i=0; i<rn->log.count; ++i){
+        free(rn->log.items[i]);
+    }
+    rn->log.count = 0;
+    func_refresh();
+    func_toggle_scene((void*) SCENE_MAIN);
 }
 
 void func_backup_dialog_create(void)
 {
-    iprintf("Create backup");
-}
-
-void func_merge(void)
-{
-    iprintf("Merge!");
+    BackupDialog *bd = &state.backup_dialog;
+    RunDialog *rn = &state.run_dialog;
+    if (!flib_isdir(bd->dest)) return;
+    thread_args_t args;
+    if (bd->is_backup){
+        args.args[0] = bd->branch_name;
+        args.args[1] = bd->dest;
+        args.args[2] = bd->prev_enable && flib_isdir(bd->prev) ? bd->prev : NULL;
+        rn->fn = tbackup;
+        rn->args = args;
+    }else{
+        args.args[0] = bd->prev;
+        args.args[1] = bd->dest;
+        rn->fn = tmerge;
+        rn->args = args;
+    }
+    bd->backups.count = 0;
+    func_run_dialog_init();
+    func_toggle_scene((void*) SCENE_RUN);
 }
 
 void HandleFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
@@ -1287,7 +1353,7 @@ void backup_dialog_layout(void)
                         .padding = {.left=4}
                     }
                 }){
-                    CLAY_TEXT(CLAY_STRING("Backup"), CLAY_TEXT_CONFIG({
+                    CLAY_TEXT(clay_string(bd->is_backup? "Backup" : "Merge"), CLAY_TEXT_CONFIG({
                         .textColor = state.theme.text,
                         .fontId = DEFAULT, 
                         .fontSize = 12,
@@ -1382,25 +1448,29 @@ void backup_dialog_layout(void)
                         .childGap = 4,
                     }
                 }){
-                    text_layout(CLAY_STRING("Create with parent:"), DEFAULT, 12, 1);
-                    CLAY({
-                        .backgroundColor = state.theme.secondary,
-                        .layout = {
-                            .sizing = {CLAY_SIZING_FIXED(12), CLAY_SIZING_FIXED(12)},
-                            .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
-                        },
-                        .border = {.color=darken_color(state.theme.secondary), .width=CLAY_BORDER_OUTSIDE(2)}
-                    }){
-                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_toggle);
-                        if (state.backup_dialog.prev_enable){
-                            CLAY({
-                                .backgroundColor = state.theme.text,
-                                .layout = {
-                                    .sizing = {CLAY_SIZING_FIXED(12), CLAY_SIZING_FIXED(12)}
-                                },
-                                .image = {&state.textures[SYMBOL_CHECK_12]}
-                            }){}
+                    if (bd->is_backup){
+                        text_layout(CLAY_STRING("Create with parent:"), DEFAULT, 12, 1);
+                        CLAY({
+                            .backgroundColor = state.theme.secondary,
+                            .layout = {
+                                .sizing = {CLAY_SIZING_FIXED(12), CLAY_SIZING_FIXED(12)},
+                                .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
+                            },
+                            .border = {.color=darken_color(state.theme.secondary), .width=CLAY_BORDER_OUTSIDE(2)}
+                        }){
+                            Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_toggle);
+                            if (state.backup_dialog.prev_enable){
+                                CLAY({
+                                    .backgroundColor = state.theme.text,
+                                    .layout = {
+                                        .sizing = {CLAY_SIZING_FIXED(12), CLAY_SIZING_FIXED(12)}
+                                    },
+                                    .image = {&state.textures[SYMBOL_CHECK_12]}
+                                }){}
+                            }
                         }
+                    } else{
+                        text_layout(CLAY_STRING("Select a backup:"), DEFAULT, 12, 1);
                     }
                 }
                 CLAY({
@@ -1427,7 +1497,7 @@ void backup_dialog_layout(void)
                             text_layout(backup.text, MONO_12, 12, 0);
                         }
                     }
-                    if (!state.backup_dialog.prev_enable){
+                    if (bd->is_backup && !state.backup_dialog.prev_enable){
                         CLAY({
                             .backgroundColor = {255, 255, 255, 128},
                             .layout = {
@@ -1454,6 +1524,114 @@ void backup_dialog_layout(void)
                         if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_create);
                         text_layout(CLAY_STRING("Create"), DEFAULT, 16, 1);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void run_dialog_layout(void)
+{
+    RunDialog *rn = &state.run_dialog;
+    if (rn->running){
+        char msg[MAX_MSG_LEN];
+        while (msgq_pop(msg, sizeof(msg))){
+            nob_da_append(&rn->log, strdup(msg));
+        }
+    }
+    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+    CLAY({
+        .backgroundColor = BLUR_COLOR,
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
+        },
+        .layout = {
+            .sizing = {CLAY_SIZING_GROW(), CLAY_SIZING_GROW()},
+            .childAlignment={CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+        },
+    }){
+        CLAY({
+            .backgroundColor = state.theme.background,
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .padding = CLAY_PADDING_ALL(4)
+            }
+        }){
+            CLAY({
+                .backgroundColor = state.theme.secondary,
+                .layout = {
+                    .sizing = {.width=CLAY_SIZING_GROW()},
+                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+                }
+            }){
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .padding = {.left=4}
+                    }
+                }){
+                    CLAY_TEXT(CLAY_STRING("Run"), CLAY_TEXT_CONFIG({
+                        .textColor = state.theme.text,
+                        .fontId = DEFAULT, 
+                        .fontSize = 12,
+                        .letterSpacing = 2
+                    }));
+                }
+            }
+            CLAY({
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .padding = CLAY_PADDING_ALL(4),
+                    .childGap = 4
+                }
+            }){
+                CLAY({
+                    .backgroundColor = state.theme.background,
+                    .layout = {
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                        .sizing = {.width=CLAY_SIZING_FIXED(512), .height=CLAY_SIZING_FIXED(156)},
+                        .padding = CLAY_PADDING_ALL(6),
+                        .childGap = 4
+                    },
+                    .border = {.color=state.theme.hover, .width=CLAY_BORDER_OUTSIDE(2)},
+                    .clip = {.vertical=true, .childOffset=Clay_GetScrollOffset()}
+                }){
+                    for (size_t i=0; i<rn->log.count; ++i){
+                        Clay_String string = clay_string(rn->log.items[i]);
+                        CLAY({
+                            .backgroundColor = NO_COLOR,
+                            .layout = {
+                                .sizing = {.width=CLAY_SIZING_GROW()}
+                            }
+                        }){
+                            text_layout(string, MONO_12, 12, 0);
+                        }
+                    }
+                }
+            }
+            if (worker_done && rn->running){
+                msgq_destroy();
+                rn->running = false;
+            }
+            if (!rn->running){
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .childAlignment = {.x=CLAY_ALIGN_X_CENTER}
+                    }
+                }){
+                    CLAY({
+                        .backgroundColor = Clay_Hovered()? state.theme.hover : state.theme.accent,
+                        .layout = {
+                            .padding = TEXT_PADDING,
+                        }
+                    }){
+                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_run_dialog_exit);
+                        text_layout(CLAY_STRING("Exit"), DEFAULT, 12, 1);
                     }
                 }
             }
@@ -1717,8 +1895,8 @@ Clay_RenderCommandArray main_layout()
                                 .childGap = 64
                             }
                         }){
-                            action_button_layout(CLAY_STRING("Make Backup"), func_backup_dialog_init);
-                            action_button_layout(CLAY_STRING("Merge Backup"), func_merge);
+                            action_button_layout(CLAY_STRING("Make Backup"), func_backup_dialog_backup);
+                            action_button_layout(CLAY_STRING("Merge Backup"), func_backup_dialog_merge);
                         }
                     }
                     CLAY({
@@ -1755,6 +1933,9 @@ Clay_RenderCommandArray main_layout()
             } break;
             case SCENE_BACKUP:{
                 backup_dialog_layout();
+            } break;
+            case SCENE_RUN:{
+                run_dialog_layout();
             } break;
             default:{
                 eprintf("Invalid scene state!");
@@ -1867,6 +2048,7 @@ int main(void) {
     free(state.file_dialog.items.items);
     free(state.new_branch_dialog.dirs.items);
     free(state.backup_dialog.backups.items);
+    free(state.run_dialog.log.items);
     cleanup();
     return value;
 }

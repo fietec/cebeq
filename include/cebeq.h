@@ -51,8 +51,8 @@
             #define eprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[ERROR] %s:%d in %s: " msg "", __FILE__, __LINE__, __func__, ##__VA_ARGS__); msgq_push(msgb);}while(0)
         #else
             #define dprintf(msg, ...) 
-            #define iprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[INFO]" msg "", ##__VA_ARGS__); msgq_push(msgb);}while(0)
-            #define eprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[ERROR]" msg "", ##__VA_ARGS__); msgq_push(msgb);}while(0)
+            #define iprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[INFO] " msg "", ##__VA_ARGS__); msgq_push(msgb);}while(0)
+            #define eprintf(msg, ...) do{char msgb[MAX_MSG_LEN]; snprintf(msgb, sizeof(msgb), "[ERROR] " msg "", ##__VA_ARGS__); msgq_push(msgb);}while(0)
         #endif // CEBEQ_DEBUG
     #endif // CEBEQ_COLOR
 #else

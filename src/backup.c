@@ -191,6 +191,7 @@ int backup_init(const char *src, const char *dest, const char *parent)
     size_t name_length = 0;
     cwk_path_get_basename(src, &name, &name_length);
     cwk_path_join(dest, name, dest_path, FILENAME_MAX);
+
     if (!create_dir(dest_path)) return 1;
     if (parent == NULL){
         return make_backup_rec(src, dest_path, NULL);

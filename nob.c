@@ -36,7 +36,7 @@ bool build_lib(Nob_Cmd *cmd)
     append_head(cmd);
     nob_cmd_append(cmd, "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c", "src/cebeq.c", "src/threading.c", "src/message_queue.c");
 #ifdef _WIN32
-    nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-D", "CEBEQ_COLOR", "-D", "CEBEQ_MSGQ", "-shared", "-o", "build/core.dll");
+    nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-D", "CEBEQ_MSGQ", "-shared", "-o", "build/core.dll");
 #else
     nob_cmd_append(cmd, "-fPIC", "-shared", "-o", "build/libcore.so");
 #endif // _WIN32

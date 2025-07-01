@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <string.h>
 
+#define CEBEQ_COLOR
+
 #include <cebeq.h>
 #include <cwalk.h>
 #include <cson.h>
