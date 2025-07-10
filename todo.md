@@ -1,6 +1,5 @@
 # Todo:
 
-- Linux testing
 - fix path sep spam on windows
 - lib:
     - add more logging (maybe controllable through log level?)

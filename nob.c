@@ -21,7 +21,7 @@ void print_usage(const char *program_name)
 
 void append_head(Nob_Cmd *cmd)
 {
-    nob_cmd_append(cmd, "gcc", "-std=gnu23");
+    nob_cmd_append(cmd, "gcc", "-std=gnu2x");
     nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow"); // definetly not cheating here..    
     nob_cmd_append(cmd, "-I", "./include", "-I.");
     //nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG"); // remove this in production build
@@ -59,10 +59,13 @@ bool build_gui(Nob_Cmd *cmd)
     nob_log(NOB_INFO, "Building gui..");
     append_head(cmd);
     nob_cmd_append(cmd, "-o", "build/gui");
-    nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore", "-Llib", "-lraylib", "-lgdi32", "-lwinmm");
+    nob_cmd_append(cmd, "src/gui.c", "-Lbuild", "-lcore", "-Llib", "-lraylib");
     nob_cmd_append(cmd, "-Wno-unused-function"); // caused by nob.h
     nob_cmd_append(cmd, "-D", "NOB_NO_MINIRENT");
-#ifndef _WIN32
+#ifdef _WIN32
+    nob_cmd_append(cmd, "-lgdi32", "-lwinmm");
+#else
+    nob_cmd_append(cmd, "-lGL", "-lm", "-lpthread", "-ldl", "-lrt", "-lX11");
     nob_cmd_append(cmd, "-Wl,-rpath,build");
 #endif // _WIN32
     if (!nob_cmd_run_sync_and_reset(cmd)){
