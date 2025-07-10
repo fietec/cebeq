@@ -22,7 +22,7 @@ void print_usage(const char *program_name)
 void append_head(Nob_Cmd *cmd)
 {
     nob_cmd_append(cmd, "gcc", "-std=gnu2x");
-    nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow"); // definetly not cheating here..    
+    nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow", "-Wno-format-truncation"); // definetly not cheating here..    
     nob_cmd_append(cmd, "-I", "./include", "-I.");
     //nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG"); // remove this in production build
 }
@@ -34,6 +34,7 @@ bool build_lib(Nob_Cmd *cmd)
     // Build core.o
     append_head(cmd);
     nob_cmd_append(cmd, "src/backup.c", "src/merge.c", "src/cwalk.c", "src/cson.c", "src/flib.c", "src/cebeq.c", "src/threading.c", "src/message_queue.c");
+    nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-D", "CEBEQ_MSGQ");
 #ifdef _WIN32
     nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-D", "CEBEQ_MSGQ", "-shared", "-o", "build/core.dll");
 #else
