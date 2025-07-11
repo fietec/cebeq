@@ -50,7 +50,7 @@ bool build_cli(Nob_Cmd *cmd)
     nob_cmd_append(cmd, "-o", "build/cli");
     nob_cmd_append(cmd, "src/cli.c", "-Lbuild", "-lcore");
 #ifndef _WIN32
-    nob_cmd_append(cmd, "-Wl,-rpath,build");
+    nob_cmd_append(cmd, "-Wl,-rpath,$ORIGIN");
 #endif // _WIN32
     return nob_cmd_run_sync_and_reset(cmd);
 }
@@ -67,7 +67,7 @@ bool build_gui(Nob_Cmd *cmd)
     nob_cmd_append(cmd, "-lgdi32", "-lwinmm");
 #else
     nob_cmd_append(cmd, "-lGL", "-lm", "-lpthread", "-ldl", "-lrt", "-lX11");
-    nob_cmd_append(cmd, "-Wl,-rpath,build");
+    nob_cmd_append(cmd, "-Wl,-rpath,$ORIGIN");
 #endif // _WIN32
     if (!nob_cmd_run_sync_and_reset(cmd)){
         nob_log(NOB_ERROR, "Failed to build gui! Make sure that you have raylib in your path or in ./lib!");
