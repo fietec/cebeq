@@ -3,3 +3,4 @@ nob.old*
 testing/*
 build/*
 *.a
+bin/*
