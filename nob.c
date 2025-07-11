@@ -26,7 +26,7 @@ void print_usage(const char *program_name)
 
     printf("Options:\n");
     printf("  --static     Build statically\n");
-    printf("  -h, help     Show this help message\n\n");
+    printf("  -h, --help     Show this help message\n\n");
 }
 void append_head(Nob_Cmd *cmd)
 {
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
         else if (strcmp(target, "all") == 0) {
             if (!build_all(&cmd, compile_static)) return 1;
         }
-        else if (strcmp(target, "help") == 0){
+        else if (strcmp(target, "--help") == 0){
             print_usage(program_name);
             return 0;
         }
