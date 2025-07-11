@@ -147,6 +147,10 @@ int main(int argc, char **argv)
         nob_log(NOB_ERROR, "Could not create build directory!");
         return 1;
     }
+    if (!nob_mkdir_if_not_exists("bin")){
+        nob_log(NOB_ERROR, "Could not create bin directory!");
+        return 1;
+    }
     bool compile_static = false;
     while (argc > 0){
         const char *target = nob_shift_args(&argc, &argv);
