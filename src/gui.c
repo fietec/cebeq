@@ -2037,7 +2037,6 @@ int main(void) {
         EndDrawing();
     }
   defer:
-    Clay_Raylib_Close();
     for (size_t i=0; i<_FontId_Count; ++i){
         UnloadFont(fonts[i]);
     }
@@ -2045,10 +2044,13 @@ int main(void) {
         UnloadTexture(state.textures[i]);
     }
     UnloadImage(icon);
+
     free(state.file_dialog.items.items);
     free(state.new_branch_dialog.dirs.items);
     free(state.backup_dialog.backups.items);
     free(state.run_dialog.log.items);
+    
+    Clay_Raylib_Close();
     cleanup();
     return value;
 }
