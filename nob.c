@@ -21,19 +21,19 @@ void print_usage(const char *program_name)
     printf("Targets:\n");
     printf("  - cli        Build the CLI application\n");
     printf("  - gui        Build the GUI application\n");
-    printf("  - lib        Build the core functionality library\n");
+    printf("  - lib        Build the cebeq functionality library\n");
     printf("  - all        Build all of the above\n\n");
 
     printf("Options:\n");
     printf("  --static     Build statically\n");
     printf("  -h, --help     Show this help message\n\n");
 }
+
 void append_head(Nob_Cmd *cmd)
 {
     nob_cmd_append(cmd, "gcc", "-std=gnu2x");
     nob_cmd_append(cmd, "-Wall", "-Wextra", "-Werror", "-Wno-unused-value", "-Wno-stringop-overflow", "-Wno-format-truncation");
     nob_cmd_append(cmd, "-I", "./include", "-I.");
-    // nob_cmd_append(cmd, "-D", "CEBEQ_DEBUG");
 }
 
 void create_lib_files()
@@ -46,7 +46,7 @@ void create_lib_files()
 
 bool build_lib(Nob_Cmd *cmd, bool compile_static)
 {
-    nob_log(NOB_INFO, "Building core library..");
+    nob_log(NOB_INFO, "Building cebeq library..");
     create_lib_files();
     if (compile_static){
         // create object files
@@ -56,7 +56,7 @@ bool build_lib(Nob_Cmd *cmd, bool compile_static)
             if (!nob_cmd_run_sync_and_reset(cmd)) return false;
         }
         // create static library
-        nob_cmd_append(cmd, "ar", "rcs", "build/libcore.a");
+        nob_cmd_append(cmd, "ar", "rcs", "build/libcebeq.a");
         for (size_t i=0; i<lib_file_count; ++i){
             nob_cmd_append(cmd, obj_files[i]);
         }
@@ -66,12 +66,12 @@ bool build_lib(Nob_Cmd *cmd, bool compile_static)
         for (size_t i=0; i<lib_file_count; ++i){
             nob_cmd_append(cmd, src_files[i]);
         }
-        nob_cmd_append(cmd, "-D", "CEBEQ_EXPORT", "-D", "CEBEQ_MSGQ");
+        nob_cmd_append(cmd, "-DCEBEQ_SHARED", "-DCEBEQ_EXPORTS", "-DCEBEQ_MSGQ");
 
     #ifdef _WIN32
-        nob_cmd_append(cmd, "-shared", "-o", "bin/core.dll");
+        nob_cmd_append(cmd, "-shared", "-o", "bin/cebeq.dll");
     #else
-        nob_cmd_append(cmd, "-fPIC", "-shared", "-o", "bin/libcore.so");
+        nob_cmd_append(cmd, "-fPIC", "-shared", "-o", "bin/libcebeq.so");
     #endif
         return nob_cmd_run_sync_and_reset(cmd);
     }
@@ -81,13 +81,13 @@ bool build_cli(Nob_Cmd *cmd, bool compile_static)
 {
     nob_log(NOB_INFO, "Building cli..");
     append_head(cmd);
-    nob_cmd_append(cmd, "-o", "bin/cli", "src/cli.c");
+    nob_cmd_append(cmd, "-o", "bin/cbq", "src/cli.c");
 
     if (compile_static) {
         nob_cmd_append(cmd, "-static");
-        nob_cmd_append(cmd, "build/libcore.a");
+        nob_cmd_append(cmd, "build/libcebeq.a");
     } else {
-        nob_cmd_append(cmd, "-Lbin", "-lcore");
+        nob_cmd_append(cmd, "-Lbin", "-lcebeq");
     }
 
 #ifndef _WIN32
@@ -101,12 +101,12 @@ bool build_gui(Nob_Cmd *cmd, bool compile_static)
 {
     nob_log(NOB_INFO, "Building gui..");
     append_head(cmd);
-    nob_cmd_append(cmd, "-o", "bin/gui", "src/gui.c");
+    nob_cmd_append(cmd, "-o", "bin/cbqgui", "src/gui.c");
 
     if (compile_static) {
-        nob_cmd_append(cmd, "build/libcore.a");
+        nob_cmd_append(cmd, "build/libcebeq.a");
     } else {
-        nob_cmd_append(cmd, "-Lbin", "-lcore");
+        nob_cmd_append(cmd, "-Lbin", "-lcebeq");
         nob_cmd_append(cmd, "-Wl,-rpath,$ORIGIN");
     }
 

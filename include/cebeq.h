@@ -7,14 +7,35 @@
 #include <stdbool.h>
 
 #ifdef _WIN32
-  #ifdef CEBEQ_EXPORT
-    #define CBQLIB __declspec(dllexport)
-  #else
-    #define CBQLIB __declspec(dllimport)
-  #endif
+    #define _CEBEQ_EXPORT __declspec(dllexport)
+    #define _CEBEQ_IMPORT __declspec(dllimport)
+#elif __GNUC__ >= 4
+    #define _CEBEQ_EXPORT __attribute__((visibility("default")))
+    #define _CEBEQ_IMPORT __attribute__((visibility("default")))
 #else
-  #define CBQLIB __attribute__((visibility("default")))
-#endif // _WIN32
+    #define _CEBEQ_EXPORT
+    #define _CEBEQ_IMPORT
+#endif
+
+#ifdef CEBEQ_SHARED
+    #ifdef CEBEQ_EXPORTS
+        #define CBQLIB _CEBEQ_EXPORT
+    #else
+        #define CBQLIB _CEBEQ_IMPORT
+    #endif // CEBEQ_EXPORTS
+#else
+    #define CBQLIB
+#endif // CEBEQ_SHARED
+
+//~ #ifdef _WIN32
+  //~ #ifdef CEBEQ_EXPORT
+    //~ #define CBQLIB __declspec(dllexport)
+  //~ #else
+    //~ #define CBQLIB __declspec(dllimport)
+  //~ #endif
+//~ #else
+  //~ #define CBQLIB __attribute__((visibility("default")))
+//~ #endif // _WIN32
 
 #define MAX_LONG_PATH 32767
 #define MAX_QUEUE 100

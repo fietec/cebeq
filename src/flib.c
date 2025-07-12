@@ -103,6 +103,7 @@ int copy_file(const char *from, const char *to)
     }
     return 0;
   #endif // _WIN32
+    // TODO: copy file ownership and permissions
     int fd_to, fd_from;
     char buffer[4096];
     ssize_t nread;

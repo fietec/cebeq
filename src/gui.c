@@ -29,6 +29,7 @@ typedef enum{
     SCENE_MAIN,
     SCENE_SETTINGS,
     SCENE_NEW,
+    SCENE_HISTORY,
     SCENE_FILE,
     SCENE_ABOUT,
     SCENE_CONFIRM,
@@ -327,6 +328,11 @@ void func_branch_exit(void)
 void func_branch_new(void)
 {
     func_toggle_scene((void*) SCENE_NEW);
+}
+
+void func_branch_history(void)
+{
+    func_toggle_scene((void*) SCENE_HISTORY);
 }
 
 void func_add_branch(void)
@@ -888,6 +894,72 @@ void input_menu_layout(void)
     }
 }
 
+void history_menu_layout(void)
+{
+    CLAY({
+        .backgroundColor = BLUR_COLOR,
+        .floating = {
+            .attachTo = CLAY_ATTACH_TO_ROOT,
+            .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
+        },
+        .layout = {
+            .sizing = {CLAY_SIZING_GROW(), CLAY_SIZING_GROW()},
+            .childAlignment={CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER},
+        },
+    }){
+        CLAY({
+            .layout = {
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+            }
+        }){
+            CLAY({
+                .backgroundColor = state.theme.secondary,
+                .layout = {
+                    .sizing = {.width=CLAY_SIZING_GROW()},
+                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+                }
+            }){
+                CLAY({
+                    .layout = {
+                        .sizing = {.width=CLAY_SIZING_GROW()},
+                        .padding = {.left=4}
+                    }
+                }){
+                    CLAY_TEXT(CLAY_STRING("History"), CLAY_TEXT_CONFIG({
+                        .textColor = state.theme.text,
+                        .fontId = DEFAULT, 
+                        .fontSize = 12,
+                        .letterSpacing = 2
+                    }));
+                }
+                CLAY({
+                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
+                    .layout = {
+                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                    },
+                }){
+                    CLAY({
+                        .layout = {
+                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
+                        },
+                        .image = {&state.textures[SYMBOL_EXIT_16]}
+                    }){}
+                    Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_MAIN);
+                }
+            }
+            CLAY({
+                .backgroundColor = state.theme.background,
+                .layout = {
+                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                    .padding = CLAY_PADDING_ALL(4),
+                    .childGap = 8
+                }
+            }){
+                
+            }
+        }
+    }
+}
 void about_menu_layout(void)
 {
     CLAY({
@@ -1909,6 +1981,7 @@ Clay_RenderCommandArray main_layout()
                         }
                     }){
                         branch_action_button_layout(CLAY_STRING("New"), state.theme.accent, func_branch_new);
+                        branch_action_button_layout(CLAY_STRING("History"), state.theme.accent, func_branch_history);
                         branch_action_button_layout(CLAY_STRING("Remove"), state.theme.danger, func_branch_remove_before_confirm);
                     }
                 }
@@ -1918,6 +1991,9 @@ Clay_RenderCommandArray main_layout()
             case SCENE_MAIN: break;
             case SCENE_NEW: {
                 input_menu_layout();
+            } break;
+            case SCENE_HISTORY:{
+                history_menu_layout();
             } break;
             case SCENE_FILE: {
                 dir_input_menu_layout();
