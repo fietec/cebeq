@@ -27,16 +27,6 @@
     #define CBQLIB
 #endif // CEBEQ_SHARED
 
-//~ #ifdef _WIN32
-  //~ #ifdef CEBEQ_EXPORT
-    //~ #define CBQLIB __declspec(dllexport)
-  //~ #else
-    //~ #define CBQLIB __declspec(dllimport)
-  //~ #endif
-//~ #else
-  //~ #define CBQLIB __attribute__((visibility("default")))
-//~ #endif // _WIN32
-
 #define MAX_LONG_PATH 32767
 #define MAX_QUEUE 100
 #define MAX_MSG_LEN 256

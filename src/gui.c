@@ -66,6 +66,7 @@ typedef struct {
 } Theme;
 
 typedef void (*FuncButtonData)(void);
+typedef void (*Callback)(void);
 
 typedef struct{
     void (*func) (void*);
@@ -155,6 +156,11 @@ typedef struct{
 } RunDialog;
 
 typedef struct{
+    char heading[64];
+    Branches backups;
+} HistoryDialog;
+
+typedef struct{
     Theme theme;
     Branches branches;
     int selected_branch;
@@ -175,6 +181,7 @@ typedef struct{
     ConfirmDialog confirm_dialog;
     BackupDialog backup_dialog;
     RunDialog run_dialog;
+    HistoryDialog history_dialog;
 } State;
 
 static State state = {
@@ -249,6 +256,10 @@ void func_new_branch_add(void)
 
 bool set_branches(void)
 {
+    for (size_t i=0; i<state.branches.count; ++i){
+        Branch branch = state.branches.items[i];
+        free((void*) branch.text.chars);
+    }
     state.branches.count = 0;
     Cson *branch_names = cson_map_keys(state.cson_branches);
     if (!cson_is_array(branch_names)){
@@ -330,11 +341,6 @@ void func_branch_new(void)
     func_toggle_scene((void*) SCENE_NEW);
 }
 
-void func_branch_history(void)
-{
-    func_toggle_scene((void*) SCENE_HISTORY);
-}
-
 void func_add_branch(void)
 {
     if (state.new_branch_len > 0){        
@@ -388,16 +394,22 @@ void func_branch_remove_before_confirm(void)
     }
 }
 
-void func_task_loc_open(void)
+void func_loc_open(char *dir)
 {
+    if (strlen(dir) >= FILENAME_MAX) return;
     char command[FILENAME_MAX + 32] = {0};
   #ifdef _WIN32
     const char *fman = "explorer";
   #else
     const char *fman = "xdg-open";
   #endif // _WIN32
-    snprintf(command, sizeof(command), "%s %s", fman, exe_dir);
+    snprintf(command, sizeof(command), "%s %s", fman, dir);
     system(command);
+}
+
+void func_task_loc_open(void)
+{
+    func_loc_open(exe_dir);
 }
 
 void func_dir_dialog_exit(void)
@@ -526,6 +538,45 @@ void func_backup_dialog_merge(void)
     func_backup_dialog_init();
 }
 
+void func_history_dialog_init(void)
+{
+    if (state.selected_branch == -1) return;
+    
+    HistoryDialog *hd = &state.history_dialog;
+    const char *branch_name = state.branches.items[state.selected_branch].name;
+    Cson *backups = cson_get(state.cson_branches, key((char*)branch_name), key("backups"));
+    if (!cson_is_array(backups)){
+        func_toggle_scene((void*) SCENE_MAIN);
+        return;
+    }
+    size_t backup_count = cson_len(backups);
+    for (size_t i=0; i<backup_count; ++i){
+        char *backup = cson_get_cstring(backups, index(i));
+        if (backup == NULL) continue;
+        Branch branch = {.name = backup, .text=clay_string(backup)};
+        nob_da_append(&hd->backups, branch);
+    }
+    
+    snprintf(hd->heading, sizeof(hd->heading)-1, "Currently, there are %zu backups:", backup_count);
+    func_toggle_scene((void*) SCENE_HISTORY);
+}
+
+void func_history_dialog_exit(void)
+{
+    HistoryDialog *hd = &state.history_dialog;
+    hd->backups.count = 0;
+    func_toggle_scene((void*) SCENE_MAIN);
+}
+
+void func_history_dialog_open(int index)
+{
+    HistoryDialog *hd = &state.history_dialog;
+    if (index >= 0 && (size_t) index < hd->backups.count){
+        char *backup = (char*) hd->backups.items[index].name;
+        func_loc_open(backup);
+    }
+}
+
 void func_run_dialog_init(void)
 {
     RunDialog *rn = &state.run_dialog;
@@ -631,6 +682,14 @@ void HandleParentSelectInteraction(Clay_ElementId id, Clay_PointerData pointer_d
     }
 }
 
+void HandleHistorySelectInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    if (pointer_data.state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME){
+        func_history_dialog_open((int) user_data);
+    }
+}
+
 // render functions
 
 void text_layout(Clay_String string, uint16_t font_id, uint16_t font_size, uint16_t spacing)
@@ -641,6 +700,49 @@ void text_layout(Clay_String string, uint16_t font_id, uint16_t font_size, uint1
         .fontSize = font_size,
         .letterSpacing = spacing
     }));
+}
+
+void title_bar_layout(Clay_String title, Callback callback)
+{
+    CLAY({
+        .backgroundColor = state.theme.secondary,
+        .layout = {
+            .sizing = {.width=CLAY_SIZING_GROW()},
+            .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+        }
+    }){
+        CLAY({
+            .layout = {
+                .sizing = {.width=CLAY_SIZING_GROW()},
+                .padding = {.left=4}
+            }
+        }){
+            CLAY_TEXT(title, CLAY_TEXT_CONFIG({
+                .textColor = state.theme.text,
+                .fontId = DEFAULT, 
+                .fontSize = 12,
+                .letterSpacing = 2
+            }));
+        }
+        CLAY({
+            .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
+            .layout = {
+                .padding = {.left=8, .right=8, .top=4, .bottom=4},
+            },
+        }){
+            CLAY({
+                .layout = {
+                    .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
+                },
+                .image = {&state.textures[SYMBOL_EXIT_16]}
+            }){}
+            if (callback == NULL){
+                Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_MAIN);
+            }else{
+                Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) callback);
+            }
+        }
+    }
 }
 
 void settings_menu_layout(void)
@@ -662,42 +764,7 @@ void settings_menu_layout(void)
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             }
         }){
-            CLAY({
-                .backgroundColor = state.theme.secondary,
-                .layout = {
-                    .sizing = {.width=CLAY_SIZING_GROW()},
-                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
-                }
-            }){
-                CLAY({
-                    .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()},
-                        .padding = {.left=4}
-                    }
-                }){
-                    CLAY_TEXT(CLAY_STRING("Settings"), CLAY_TEXT_CONFIG({
-                        .textColor = state.theme.text,
-                        .fontId = DEFAULT, 
-                        .fontSize = 12,
-                        .letterSpacing = 2
-                    }));
-                }
-                CLAY({
-                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
-                    .layout = {
-                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
-                    },
-                }){
-                    CLAY({
-                        .layout = {
-                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
-                        },
-                        .image = {&state.textures[SYMBOL_EXIT_16]}
-                    }){
-                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_MAIN);
-                    }
-                }
-            }
+            title_bar_layout(CLAY_STRING("Settings"), NULL);
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
@@ -912,50 +979,41 @@ void history_menu_layout(void)
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             }
         }){
-            CLAY({
-                .backgroundColor = state.theme.secondary,
-                .layout = {
-                    .sizing = {.width=CLAY_SIZING_GROW()},
-                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
-                }
-            }){
-                CLAY({
-                    .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()},
-                        .padding = {.left=4}
-                    }
-                }){
-                    CLAY_TEXT(CLAY_STRING("History"), CLAY_TEXT_CONFIG({
-                        .textColor = state.theme.text,
-                        .fontId = DEFAULT, 
-                        .fontSize = 12,
-                        .letterSpacing = 2
-                    }));
-                }
-                CLAY({
-                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
-                    .layout = {
-                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
-                    },
-                }){
-                    CLAY({
-                        .layout = {
-                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
-                        },
-                        .image = {&state.textures[SYMBOL_EXIT_16]}
-                    }){}
-                    Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_MAIN);
-                }
-            }
+            HistoryDialog *hd = &state.history_dialog;
+            title_bar_layout(CLAY_STRING("History"), func_history_dialog_exit);
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
                     .layoutDirection = CLAY_TOP_TO_BOTTOM,
                     .padding = CLAY_PADDING_ALL(4),
-                    .childGap = 8
                 }
             }){
-                
+                text_layout(clay_string(hd->heading), DEFAULT, 12, 1);
+                bool backups_hovered = false;
+                for (size_t i=0; i<hd->backups.count; ++i){
+                    CLAY({
+                        .layout = {
+                            .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+                        }
+                    }){
+                        text_layout(CLAY_STRING("  - "), MONO_12, 12, 0);
+                        CLAY({
+                            .backgroundColor = Clay_Hovered()? state.theme.secondary : NO_COLOR,
+                            .layout = {
+                                .padding = TEXT_PADDING
+                            }
+                        }){
+                            if (Clay_Hovered()) backups_hovered = true;
+                            Clay_OnHover(HandleHistorySelectInteraction, (intptr_t) i);
+                            text_layout(hd->backups.items[i].text, MONO_12, 12, 0);
+                        }
+                    }
+                }
+                if (backups_hovered){
+                    SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                } else{
+                    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+                }
             }
         }
     }
@@ -1981,7 +2039,7 @@ Clay_RenderCommandArray main_layout()
                         }
                     }){
                         branch_action_button_layout(CLAY_STRING("New"), state.theme.accent, func_branch_new);
-                        branch_action_button_layout(CLAY_STRING("History"), state.theme.accent, func_branch_history);
+                        branch_action_button_layout(CLAY_STRING("History"), state.theme.accent, func_history_dialog_init);
                         branch_action_button_layout(CLAY_STRING("Remove"), state.theme.danger, func_branch_remove_before_confirm);
                     }
                 }
@@ -2125,6 +2183,8 @@ int main(void) {
     free(state.new_branch_dialog.dirs.items);
     free(state.backup_dialog.backups.items);
     free(state.run_dialog.log.items);
+    free(state.sb.items);
+    free(state.history_dialog.backups.items);
     
     Clay_Raylib_Close();
     cleanup();
