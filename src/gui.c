@@ -557,7 +557,15 @@ void func_history_dialog_init(void)
         nob_da_append(&hd->backups, branch);
     }
     
-    snprintf(hd->heading, sizeof(hd->heading)-1, "Currently, there are %zu backups:", backup_count);
+    if (backup_count == 0){
+        snprintf(hd->heading, sizeof(hd->heading)-1, "Currently, there are no backups for branch '%s'.", branch_name);
+    }
+    else if (backup_count == 1){
+        snprintf(hd->heading, sizeof(hd->heading)-1, "Currently, there is %zu backup for branch '%s':", backup_count, branch_name);
+    }
+    else{
+        snprintf(hd->heading, sizeof(hd->heading)-1, "Currently, there are %zu backups for branch '%s':", backup_count, branch_name);
+    }
     func_toggle_scene((void*) SCENE_HISTORY);
 }
 
@@ -986,33 +994,40 @@ void history_menu_layout(void)
                 .layout = {
                     .layoutDirection = CLAY_TOP_TO_BOTTOM,
                     .padding = CLAY_PADDING_ALL(4),
+                    .childGap = 4
                 }
             }){
                 text_layout(clay_string(hd->heading), DEFAULT, 12, 1);
-                bool backups_hovered = false;
-                for (size_t i=0; i<hd->backups.count; ++i){
-                    CLAY({
-                        .layout = {
-                            .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
-                        }
-                    }){
-                        text_layout(CLAY_STRING("  - "), MONO_12, 12, 0);
+                CLAY({
+                    .layout = {
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM
+                    }
+                }){
+                    bool backups_hovered = false;
+                    for (size_t i=0; i<hd->backups.count; ++i){
                         CLAY({
-                            .backgroundColor = Clay_Hovered()? state.theme.secondary : NO_COLOR,
                             .layout = {
-                                .padding = TEXT_PADDING
+                                .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
                             }
                         }){
-                            if (Clay_Hovered()) backups_hovered = true;
-                            Clay_OnHover(HandleHistorySelectInteraction, (intptr_t) i);
-                            text_layout(hd->backups.items[i].text, MONO_12, 12, 0);
+                            text_layout(CLAY_STRING("  - "), MONO_12, 12, 0);
+                            CLAY({
+                                .backgroundColor = Clay_Hovered()? state.theme.secondary : NO_COLOR,
+                                .layout = {
+                                    .padding = TEXT_PADDING
+                                }
+                            }){
+                                if (Clay_Hovered()) backups_hovered = true;
+                                Clay_OnHover(HandleHistorySelectInteraction, (intptr_t) i);
+                                text_layout(hd->backups.items[i].text, MONO_12, 12, 0);
+                            }
                         }
                     }
-                }
-                if (backups_hovered){
-                    SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
-                } else{
-                    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+                    if (backups_hovered){
+                        SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                    } else{
+                        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+                    }
                 }
             }
         }
@@ -1769,26 +1784,28 @@ void run_dialog_layout(void)
     }
 }
 
-void branch_action_button_layout(Clay_String string, Clay_Color color, FuncButtonData data)
+void branch_action_button_layout(Clay_String string, Clay_Color color, FuncButtonData data, bool on_selection)
 {
-    CLAY({
-        .backgroundColor = Clay_Hovered()? darken_color(color) : color,
-        .layout = {
-            .sizing = {.width = CLAY_SIZING_GROW()},
-            .padding = {.left=8, .right=8, .top=4, .bottom=4},
-            .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
-        },
-    }){
-        CLAY_TEXT(string, CLAY_TEXT_CONFIG({
-            .textColor = state.theme.text,
-            .fontId = DEFAULT,
-            .fontSize = 16,
-            .letterSpacing = 1
-        }));
-        if (Clay_Hovered()){
-            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+    if (!on_selection || state.selected_branch >= 0){
+        CLAY({
+            .backgroundColor = Clay_Hovered()? darken_color(color) : color,
+            .layout = {
+                .sizing = {.width = CLAY_SIZING_GROW()},
+                .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                .childAlignment = { CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
+            },
+        }){
+            CLAY_TEXT(string, CLAY_TEXT_CONFIG({
+                .textColor = state.theme.text,
+                .fontId = DEFAULT,
+                .fontSize = 16,
+                .letterSpacing = 1
+            }));
+            if (Clay_Hovered()){
+                SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+            }
+            Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) data);
         }
-        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) data);
     }
 }
 
@@ -2038,9 +2055,9 @@ Clay_RenderCommandArray main_layout()
                             .padding = {.top=32}
                         }
                     }){
-                        branch_action_button_layout(CLAY_STRING("New"), state.theme.accent, func_branch_new);
-                        branch_action_button_layout(CLAY_STRING("History"), state.theme.accent, func_history_dialog_init);
-                        branch_action_button_layout(CLAY_STRING("Remove"), state.theme.danger, func_branch_remove_before_confirm);
+                        branch_action_button_layout(CLAY_STRING("New"), state.theme.accent, func_branch_new, false);
+                        branch_action_button_layout(CLAY_STRING("History"), state.theme.accent, func_history_dialog_init, true);
+                        branch_action_button_layout(CLAY_STRING("Remove"), state.theme.danger, func_branch_remove_before_confirm, true);
                     }
                 }
             }   
