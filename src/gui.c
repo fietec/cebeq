@@ -1000,21 +1000,24 @@ void history_menu_layout(void)
                 text_layout(clay_string(hd->heading), DEFAULT, 12, 1);
                 CLAY({
                     .layout = {
-                        .layoutDirection = CLAY_TOP_TO_BOTTOM
+                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                        .sizing = {.width=CLAY_SIZING_GROW()},
                     }
                 }){
                     bool backups_hovered = false;
                     for (size_t i=0; i<hd->backups.count; ++i){
                         CLAY({
                             .layout = {
-                                .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
+                                .childAlignment = {.y=CLAY_ALIGN_Y_CENTER},
+                                .sizing = {.width=CLAY_SIZING_GROW()},
                             }
                         }){
                             text_layout(CLAY_STRING("  - "), MONO_12, 12, 0);
                             CLAY({
                                 .backgroundColor = Clay_Hovered()? state.theme.secondary : NO_COLOR,
                                 .layout = {
-                                    .padding = TEXT_PADDING
+                                    .padding = TEXT_PADDING,
+                                    .sizing = {.width=CLAY_SIZING_GROW()},
                                 }
                             }){
                                 if (Clay_Hovered()) backups_hovered = true;
