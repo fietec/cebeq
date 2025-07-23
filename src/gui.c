@@ -412,6 +412,13 @@ void func_task_loc_open(void)
     func_loc_open(exe_dir);
 }
 
+void func_task_config_open(void)
+{
+    char config_path[FILENAME_MAX];
+    cwk_path_join(program_dir, "data/info.json", config_path, sizeof(config_path));
+    func_loc_open(config_path);
+}
+
 void func_dir_dialog_exit(void)
 {
     state.file_dialog.first_frame = true;
@@ -1905,7 +1912,7 @@ Clay_RenderCommandArray main_layout()
                             }
                         }){
                             render_task_menu_button(CLAY_STRING("Open File Location"), func_task_loc_open);
-                            render_task_menu_button(CLAY_STRING("Open Config File"), NULL);
+                            render_task_menu_button(CLAY_STRING("Open Config File"), func_task_config_open);
                             render_task_menu_button(CLAY_STRING("Copy Path"), NULL);
                         }
                     }
