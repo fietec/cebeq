@@ -1024,7 +1024,7 @@ bool cson__parse_array(Cson *array, CsonLexer *lexer)
                 cson_error_unexpected(token.loc, token.type, CSON_VALUE_TOKENS);
                 return false;
             }
-            return true;;
+            return true;
         }
         Cson *cson = NULL;
         if (!cson__parse_value(&cson, lexer, &token)) return false;
