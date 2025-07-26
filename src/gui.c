@@ -175,6 +175,7 @@ typedef struct{
     int new_branch_len;
     char temp_buffer[256];
     char *version;
+    MouseCursor cursor;
     Nob_String_Builder sb;
     FileDialog file_dialog;
     NewBranchDialog new_branch_dialog;
@@ -868,7 +869,7 @@ void input_menu_layout(void)
                     },
                 }){
                     if (Clay_Hovered()){
-                        SetMouseCursor(MOUSE_CURSOR_IBEAM);
+                        state.cursor = MOUSE_CURSOR_IBEAM;
 
                         int key = GetCharPressed();
 
@@ -887,7 +888,7 @@ void input_menu_layout(void)
                         }
                         state.frame_counter++;
                     }else{
-                        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+                        state.cursor = MOUSE_CURSOR_DEFAULT;
                     }
                     text_layout((Clay_String){false, state.new_branch_len, state.new_branch_name}, MONO_12, 12, 1);
                     if (Clay_Hovered() && ((state.frame_counter/20)%2) == 0){
@@ -913,7 +914,7 @@ void input_menu_layout(void)
                             .padding = TEXT_PADDING
                         }
                     }){
-                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_new_branch_add);
                         text_layout(CLAY_STRING("Add"), DEFAULT, 12, 1);
                     }
@@ -966,7 +967,7 @@ void input_menu_layout(void)
                             .padding = {.left=8, .right=8, .top=4, .bottom=4},
                         }
                     }){
-                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_add_branch);
                         text_layout(CLAY_STRING("Create"), DEFAULT, 12, 1);
                     }
@@ -1034,9 +1035,7 @@ void history_menu_layout(void)
                         }
                     }
                     if (backups_hovered){
-                        SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
-                    } else{
-                        SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+                        state.cursor = MOUSE_CURSOR_POINTING_HAND;
                     }
                 }
             }
@@ -1168,7 +1167,6 @@ void about_menu_layout(void)
 
 void dir_input_menu_layout()
 {
-    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
     FileDialog *fd = &state.file_dialog;
     if (fd->first_frame){
         DIR *dir = opendir(fd->dir_path);
@@ -1373,7 +1371,7 @@ void dir_input_menu_layout()
                             .padding = TEXT_PADDING
                         }
                     }){
-                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_dir_dialog_set);
                         text_layout(CLAY_STRING("Ok"), DEFAULT, 16, 0);
                     }
@@ -1385,7 +1383,6 @@ void dir_input_menu_layout()
 
 void confirm_menu_layout(void)
 {
-    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
     CLAY({
         .backgroundColor = BLUR_COLOR,
         .floating = {
@@ -1456,7 +1453,7 @@ void confirm_menu_layout(void)
                             .padding = TEXT_PADDING,
                         }
                     }){
-                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_yes);
                         text_layout(CLAY_STRING("Yes"), DEFAULT, 12, 1);
                     }
@@ -1466,7 +1463,7 @@ void confirm_menu_layout(void)
                             .padding = TEXT_PADDING,
                         }
                     }){
-                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_no);
                         text_layout(CLAY_STRING("No"), DEFAULT, 12, 1);
                     }
@@ -1561,7 +1558,7 @@ void backup_dialog_layout(void)
                         },
                     }){
                         if (Clay_Hovered()){
-                            SetMouseCursor(MOUSE_CURSOR_IBEAM);
+                            state.cursor = MOUSE_CURSOR_IBEAM;
 
                             int key = GetCharPressed();
 
@@ -1579,8 +1576,6 @@ void backup_dialog_layout(void)
                                 bd->dest[bd->dest_len] = '\0';
                             }
                             state.frame_counter++;
-                        }else{
-                            SetMouseCursor(MOUSE_CURSOR_DEFAULT);
                         }
                         text_layout((Clay_String){false, bd->dest_len, bd->dest}, MONO_12, 12, 1);
                         if (Clay_Hovered() && ((state.frame_counter/20)%2) == 0){
@@ -1593,7 +1588,7 @@ void backup_dialog_layout(void)
                             .padding = TEXT_PADDING
                         }
                     }){
-                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         text_layout(CLAY_STRING("Select"), DEFAULT, 12, 1);
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_select);
                     }
@@ -1676,7 +1671,7 @@ void backup_dialog_layout(void)
                             .padding = TEXT_PADDING
                         }
                     }){
-                        if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                        if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_create);
                         text_layout(CLAY_STRING("Create"), DEFAULT, 16, 1);
                     }
@@ -1695,7 +1690,6 @@ void run_dialog_layout(void)
             nob_da_append(&rn->log, strdup(msg));
         }
     }
-    bool button_hovered = false;
     CLAY({
         .backgroundColor = BLUR_COLOR,
         .floating = {
@@ -1755,20 +1749,20 @@ void run_dialog_layout(void)
                     .clip = {.vertical=true, .childOffset=Clay_GetScrollOffset()}
                 }){
                     for (size_t i=0; i<rn->log.count; ++i){
-			char *msg = rn->log.items[i];
-			Clay_String string = clay_string(rn->log.items[i]);
-			bool is_error = memcmp(msg, "[ERROR]", 7) == 0;
+                        char *msg = rn->log.items[i];
+                        Clay_String string = clay_string(rn->log.items[i]);
+                        bool is_error = memcmp(msg, "[ERROR]", 7) == 0;
                         CLAY({
-			    .backgroundColor = NO_COLOR,
+                            .backgroundColor = NO_COLOR,
                             .layout = {
                                 .sizing = {.width=CLAY_SIZING_GROW()}
                             }
                         }){
-			    CLAY_TEXT(string, CLAY_TEXT_CONFIG({
-				.fontId = MONO_12,
-				.fontSize = 12,
-				.textColor = is_error? state.theme.danger : state.theme.text,
-			    }));
+                            CLAY_TEXT(string, CLAY_TEXT_CONFIG({
+                                .fontId = MONO_12,
+                                .fontSize = 12,
+                                .textColor = is_error? state.theme.danger : state.theme.text,
+                            }));
                         }
                     }
                 }
@@ -1790,18 +1784,13 @@ void run_dialog_layout(void)
                             .padding = TEXT_PADDING,
                         }
                     }){
-                        if (Clay_Hovered()) button_hovered = true;
+                        if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_run_dialog_exit);
                         text_layout(CLAY_STRING("Exit"), DEFAULT, 12, 1);
                     }
                 }
             }
         }
-	if (button_hovered){
-	    SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
-	}else{
-	    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
-	}
     }
 }
 
@@ -1823,7 +1812,7 @@ void branch_action_button_layout(Clay_String string, Clay_Color color, FuncButto
                 .letterSpacing = 1
             }));
             if (Clay_Hovered()){
-                SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                state.cursor = MOUSE_CURSOR_POINTING_HAND;
             }
             Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) data);
         }
@@ -1845,7 +1834,7 @@ void action_button_layout(Clay_String string, FuncButtonData data)
             .letterSpacing = 2,
         }));        
         if (Clay_Hovered()){
-            SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+            state.cursor = MOUSE_CURSOR_POINTING_HAND;
         }
         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) data);
     }
@@ -1874,6 +1863,7 @@ void render_task_menu_button(Clay_String string, FuncButtonData data)
 
 Clay_RenderCommandArray main_layout()
 {
+    state.cursor = MOUSE_CURSOR_DEFAULT;
     Clay_BeginLayout();
     {
         CLAY({
@@ -1883,7 +1873,7 @@ Clay_RenderCommandArray main_layout()
                 .layoutDirection = CLAY_TOP_TO_BOTTOM
             }
         }){
-            if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+            if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_DEFAULT;
             CLAY({
                 .id = CLAY_ID("task_bar"),
                 .backgroundColor = state.theme.secondary,
@@ -2007,7 +1997,7 @@ Clay_RenderCommandArray main_layout()
                                     .childGap = 8
                                 }
                             }){
-                                if (Clay_Hovered()) SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
+                                if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                                 Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_refresh);
                                 
                                 CLAY_TEXT(CLAY_STRING("Refresh"), CLAY_TEXT_CONFIG({
@@ -2114,6 +2104,7 @@ Clay_RenderCommandArray main_layout()
                 CloseWindow();
             }
         }
+	SetMouseCursor(state.cursor);
     }
     return Clay_EndLayout();
 }

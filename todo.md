@@ -8,4 +8,3 @@
 - gui: 
     - improve log scrolling
     - clean up unused ui
-	- fix mouse cursor spam on buttons
