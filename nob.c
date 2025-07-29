@@ -1,6 +1,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #define NOB_IMPLEMENTATION
 #include "nob.h"
@@ -133,6 +134,30 @@ bool build_all(Nob_Cmd *cmd, bool compile_static)
     return build_lib(cmd, compile_static) && build_cli(cmd, compile_static) && build_gui(cmd, compile_static);
 }
 
+void cleanup(void)
+{
+    DIR *dir = opendir("./build");
+    if (dir == NULL){
+        printf("No 'build' directory found. Nothing to clean.\n");
+        return;
+    }
+    char entry_path[FILENAME_MAX];
+    struct dirent *entry;
+    while ((entry = readdir(dir))){
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+        snprintf(entry_path, sizeof(entry_path), "%s/%s", "./build", entry->d_name);
+        struct stat attr;
+        if (stat(entry_path, &attr) == -1){
+            fprintf(stderr, "[ERROR] Could not stat '%s'!\n", entry_path);
+            continue;
+        }
+        if (S_ISREG(attr.st_mode)){
+            nob_delete_file(entry_path);
+        }
+    }
+    closedir(dir);
+}
+
 int main(int argc, char **argv)
 {
     NOB_GO_REBUILD_URSELF(argc, argv);
@@ -166,6 +191,9 @@ int main(int argc, char **argv)
         else if (strcmp(target, "all") == 0) {
             if (!build_all(&cmd, compile_static)) return 1;
         }
+	else if (strcmp(target, "clean") == 0){
+	    cleanup();
+	}
         else if (strcmp(target, "--help") == 0){
             print_usage(program_name);
             return 0;

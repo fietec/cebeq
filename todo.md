@@ -8,3 +8,4 @@
 - gui: 
     - improve log scrolling
     - clean up unused ui
+	- add theme switch support
