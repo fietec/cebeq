@@ -134,9 +134,9 @@ bool build_all(Nob_Cmd *cmd, bool compile_static)
     return build_lib(cmd, compile_static) && build_cli(cmd, compile_static) && build_gui(cmd, compile_static);
 }
 
-void cleanup(void)
+void clear_dir(const char *dir_path)
 {
-    DIR *dir = opendir("./build");
+    DIR *dir = opendir(dir_path);
     if (dir == NULL){
         printf("No 'build' directory found. Nothing to clean.\n");
         return;
@@ -145,7 +145,7 @@ void cleanup(void)
     struct dirent *entry;
     while ((entry = readdir(dir))){
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
-        snprintf(entry_path, sizeof(entry_path), "%s/%s", "./build", entry->d_name);
+        snprintf(entry_path, sizeof(entry_path), "%s/%s", dir_path, entry->d_name);
         struct stat attr;
         if (stat(entry_path, &attr) == -1){
             fprintf(stderr, "[ERROR] Could not stat '%s'!\n", entry_path);
@@ -156,6 +156,12 @@ void cleanup(void)
         }
     }
     closedir(dir);
+}
+
+void cleanup(void)
+{
+    clear_dir("./build");
+    clear_dir("./bin");
 }
 
 int main(int argc, char **argv)
