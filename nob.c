@@ -23,7 +23,8 @@ void print_usage(const char *program_name)
     printf("  - cli        Build the CLI application\n");
     printf("  - gui        Build the GUI application\n");
     printf("  - lib        Build the cebeq functionality library\n");
-    printf("  - all        Build all of the above\n\n");
+    printf("  - all        Build all of the above\n");
+    printf("  - clean      Cleans up the 'build' and 'bin' folders\n\n");
 
     printf("Options:\n");
     printf("  --static     Build statically\n");
@@ -50,12 +51,14 @@ bool build_lib(Nob_Cmd *cmd, bool compile_static)
     nob_log(NOB_INFO, "Building cebeq library..");
     create_lib_files();
     if (compile_static){
-        // create object files
+        // create object files asynchronously
+        Nob_Procs procs = {0};
         for (size_t i=0; i<lib_file_count; ++i){
             append_head(cmd);
             nob_cmd_append(cmd, "-c", src_files[i], "-o", obj_files[i], "-D", "CEBEQ_MSGQ");
-            if (!nob_cmd_run_sync_and_reset(cmd)) return false;
+            nob_da_append(&procs, nob_cmd_run_async_and_reset(cmd));
         }
+        if (!nob_procs_wait(procs)) return false;
         // create static library
         nob_cmd_append(cmd, "ar", "rcs", "build/libcebeq.a");
         for (size_t i=0; i<lib_file_count; ++i){
@@ -197,9 +200,9 @@ int main(int argc, char **argv)
         else if (strcmp(target, "all") == 0) {
             if (!build_all(&cmd, compile_static)) return 1;
         }
-	else if (strcmp(target, "clean") == 0){
-	    cleanup();
-	}
+        else if (strcmp(target, "clean") == 0){
+            cleanup();
+        }
         else if (strcmp(target, "--help") == 0){
             print_usage(program_name);
             return 0;
