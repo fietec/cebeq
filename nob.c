@@ -6,10 +6,10 @@
 #define NOB_IMPLEMENTATION
 #include "nob.h"
 
-
 const char *lib_files[] = {
     "backup", "merge", "cwalk", "cson", "flib", "cebeq", "threading", "message_queue"
 };
+
 #define lib_file_count sizeof(lib_files)/sizeof(*lib_files)
 
 char src_files[lib_file_count][32] = {0};
@@ -28,7 +28,7 @@ void print_usage(const char *program_name)
 
     printf("Options:\n");
     printf("  --static     Build statically\n");
-    printf("  -h, --help     Show this help message\n\n");
+    printf("  -h, --help   Show this help message\n\n");
 }
 
 void append_head(Nob_Cmd *cmd)
