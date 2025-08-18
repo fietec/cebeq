@@ -7,5 +7,4 @@
     - allow static and dynamic linking with raylib?
 - gui: 
     - improve log scrolling
-    - clean up unused ui
 	- add theme switch support
