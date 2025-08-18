@@ -21,17 +21,18 @@
 
 char program_dir[FILENAME_MAX];
 char exe_dir[FILENAME_MAX];
+char exe_path[FILENAME_MAX];
 volatile int worker_done = 0;
 
 bool setup(void)
 {
     (void) cson_current_arena;
     
-    if (!get_exe_path(program_dir, sizeof(program_dir))){
+    if (!get_exe_path(exe_path, sizeof(exe_path))){
         eprintf("Failed to retrieve executable path!");
         return false;
     }
-    (void) get_parent_dir(program_dir, exe_dir, sizeof(exe_dir));
+    (void) get_parent_dir(exe_path, exe_dir, sizeof(exe_dir));
     (void) get_parent_dir(exe_dir, program_dir, sizeof(program_dir));
     return true;
 }

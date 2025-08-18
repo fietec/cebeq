@@ -88,6 +88,7 @@ typedef struct{
 
 CBQLIB extern char program_dir[FILENAME_MAX];
 CBQLIB extern char exe_dir[FILENAME_MAX];
+CBQLIB extern char exe_path[FILENAME_MAX];
 CBQLIB extern char *long_path_buf;
 CBQLIB extern volatile int worker_done;
 

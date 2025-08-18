@@ -1913,24 +1913,24 @@ Clay_RenderCommandArray main_layout()
                         }){
                             render_task_menu_button(CLAY_STRING("Open File Location"), func_task_loc_open);
                             render_task_menu_button(CLAY_STRING("Open Config File"), func_task_config_open);
-                            render_task_menu_button(CLAY_STRING("Copy Path"), NULL);
+                            // render_task_menu_button(CLAY_STRING("Copy Path"), NULL);
                         }
                     }
                 }
-                CLAY({
-                    .backgroundColor = Clay_Hovered()? state.theme.hover : NO_COLOR,
-                    .layout = {
-                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
-                        .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
-                    },
-                }){
-                    CLAY_TEXT(CLAY_STRING("Settings"), CLAY_TEXT_CONFIG({
-                        .textColor = state.theme.text,
-                        .fontId = DEFAULT,
-                        .fontSize = 16
-                    }));
-                    Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_SETTINGS);
-                }
+                /* CLAY({ */
+                /*     .backgroundColor = Clay_Hovered()? state.theme.hover : NO_COLOR, */
+                /*     .layout = { */
+                /*         .padding = {.left=8, .right=8, .top=4, .bottom=4}, */
+                /*         .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER} */
+                /*     }, */
+                /* }){ */
+                /*     CLAY_TEXT(CLAY_STRING("Settings"), CLAY_TEXT_CONFIG({ */
+                /*         .textColor = state.theme.text, */
+                /*         .fontId = DEFAULT, */
+                /*         .fontSize = 16 */
+                /*     })); */
+                /*     Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_SETTINGS); */
+                /* } */
                 CLAY({
                     .backgroundColor = Clay_Hovered()? state.theme.hover : NO_COLOR,
                     .layout = {
