@@ -174,7 +174,6 @@ typedef struct{
     char new_branch_name[NEW_BRANCH_MAX_LEN+1];
     int new_branch_len;
     char temp_buffer[256];
-    char *version;
     MouseCursor cursor;
     Nob_String_Builder sb;
     FileDialog file_dialog;
@@ -1112,7 +1111,7 @@ void about_menu_layout(void)
                     }
                 }){
                     text_layout(CLAY_STRING("Cebeq v"), MONO_16, 16, 0);
-                    text_layout(clay_string(state.version), MONO_16, 16, 0);
+                    text_layout(CLAY_STRING(VERSION), MONO_16, 16, 0);
                 }
                 CLAY({
                     .layout = {
@@ -2120,14 +2119,7 @@ int main(void) {
         error("Could not find internal info file!\n");
         return_defer(1);
     }
-    
-    Cson *c_version = cson_get(state.cson_info, key("version"));
-    if (!cson_is_string(c_version)){
-        eprintf("Could not find <version> field in info file!");
-        return_defer(1);
-    }
-    state.version = cson_get_cstring(c_version);
-    
+        
     state.cson_branches = cson_get(state.cson_info, key("branches"));
     if (!cson_is_map(state.cson_branches)){
         error("Could not find <branches> field in info file!");
@@ -2199,7 +2191,7 @@ int main(void) {
         Clay_Raylib_Render(renderCommands, fonts);
         EndDrawing();
     }
-  defer:
+    
     for (size_t i=0; i<_FontId_Count; ++i){
         UnloadFont(fonts[i]);
     }
@@ -2215,6 +2207,7 @@ int main(void) {
     free(state.sb.items);
     free(state.history_dialog.backups.items);
     
+  defer:
     Clay_Raylib_Close();
     cleanup();
     return value;

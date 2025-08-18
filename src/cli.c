@@ -14,7 +14,6 @@ typedef enum{
     Cmd_None, Cmd_Backup, Cmd_Merge, Cmd_Branch
 } Cmd;
 
-static char *version = "";
 static thread_t worker_thread;
 
 #define shift_args(argc, argv) _shift_args(&argc, &argv)
@@ -108,7 +107,7 @@ int print_branches(Cson *branches)
 
 void print_version(const char *program_name)
 {
-    printf("%s - version %s\n", program_name, version);
+    printf("%s - version %s\n", program_name, VERSION);
 }
 
 void run(thread_fn fn, thread_args_t args)
@@ -139,13 +138,7 @@ int main(int argc, char **argv)
     if (info == NULL){
         eprintf("Could not find internal info file!\n");
         return_defer(1);
-    }
-    version = cson_get_string(info, key("version")).value;
-    if (version == NULL){
-        eprintf("Invalid info file state!\n");
-        return_defer(1);
-    }
-    
+    }    
     const char *program_name = shift_args(argc, argv);
     Cmd current_command = Cmd_None;
     

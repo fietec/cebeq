@@ -32,6 +32,7 @@
 #define MAX_MSG_LEN 256
 
 #define PROGRAM_NAME "cebeq"
+#define VERSION "0.2.0"
 #define INFO_FILE "." PROGRAM_NAME
 #define BACKUPS_JSON "data/info.json"
 
@@ -43,6 +44,7 @@
 #define arr_len(arr) (sizeof((arr)) / sizeof((arr)[0])) 
 
 #define return_defer(v) do{value = (v); goto defer;}while(0)
+#define return_defer_label(l, v) do{value = (v); goto l;}while(0)
 
 #ifdef CEBEQ_MSGQ
     #ifdef CEBEQ_COLOR
