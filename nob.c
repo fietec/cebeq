@@ -20,15 +20,15 @@ void print_usage(const char *program_name)
     printf("Usage: %s [options] <targets..>\n\n", program_name);
 
     printf("Targets:\n");
-    printf("  - cli        Build the CLI application\n");
-    printf("  - gui        Build the GUI application\n");
-    printf("  - lib        Build the cebeq functionality library\n");
-    printf("  - all        Build all of the above\n");
-    printf("  - clean      Cleans up the 'build' and 'bin' folders\n\n");
+    printf("  lib        Build the cebeq functionality library\n");
+    printf("  cli        Build the CLI application (requires 'lib' to be built first)\n");
+    printf("  gui        Build the GUI application (requires 'lib' to be built first)\n");
+    printf("  all        Build lib, cli, and gui in the correct order\n");
+    printf("  clean      Remove all build and bin artifacts\n\n");
 
     printf("Options:\n");
-    printf("  --static     Build statically\n");
-    printf("  -h, --help   Show this help message\n\n");
+    printf("  --static   Build statically linked versions of following targets\n");
+    printf("  -h, --help Show this help message\n\n");
 }
 
 void append_head(Nob_Cmd *cmd)
