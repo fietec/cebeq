@@ -635,6 +635,11 @@ void func_backup_dialog_create(void)
     func_toggle_scene((void*) SCENE_RUN);
 }
 
+void func_about_exit(void)
+{
+    func_toggle_scene((void*) SCENE_MAIN);
+}
+
 void HandleFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
 {
     (void) id;
@@ -809,37 +814,7 @@ void input_menu_layout(void)
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             }
         }){
-            CLAY({
-                .backgroundColor = state.theme.secondary,
-                .layout = {
-                    .sizing = {.width=CLAY_SIZING_GROW()},
-                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
-                }
-            }){
-                CLAY({
-                    .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()},
-                        .padding = {.left=4}
-                    }
-                }){
-                    text_layout(CLAY_STRING("Create Branch"), DEFAULT, 12, 2);
-                }
-                CLAY({
-                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
-                    .layout = {
-                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
-                    },
-                }){
-                    CLAY({
-                        .layout = {
-                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
-                        },
-                        .image = {&state.textures[SYMBOL_EXIT_16]}
-                    }){
-                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_branch_exit);
-                    }
-                }
-            }
+            title_bar_layout(CLAY_STRING("Create Branch"), func_branch_exit);
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
@@ -1059,42 +1034,7 @@ void about_menu_layout(void)
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             }
         }){
-            CLAY({
-                .backgroundColor = state.theme.secondary,
-                .layout = {
-                    .sizing = {.width=CLAY_SIZING_GROW()},
-                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
-                }
-            }){
-                CLAY({
-                    .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()},
-                        .padding = {.left=4}
-                    }
-                }){
-                    CLAY_TEXT(CLAY_STRING("About"), CLAY_TEXT_CONFIG({
-                        .textColor = state.theme.text,
-                        .fontId = DEFAULT, 
-                        .fontSize = 12,
-                        .letterSpacing = 2
-                    }));
-                }
-                CLAY({
-                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
-                    .layout = {
-                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
-                    },
-                }){
-                    CLAY({
-                        .layout = {
-                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
-                        },
-                        .image = {&state.textures[SYMBOL_EXIT_16]}
-                    }){
-                        Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_MAIN);
-                    }
-                }
-            }
+            title_bar_layout(CLAY_STRING("About"), func_about_exit);
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
@@ -1203,42 +1143,7 @@ void dir_input_menu_layout()
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             }
         }){
-            CLAY({
-                .backgroundColor = state.theme.secondary,
-                .layout = {
-                    .sizing = {.width=CLAY_SIZING_GROW()},
-                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
-                }
-            }){
-                CLAY({
-                    .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()},
-                        .padding = {.left=4}
-                    }
-                }){
-                    CLAY_TEXT(CLAY_STRING("Select Directory"), CLAY_TEXT_CONFIG({
-                        .textColor = state.theme.text,
-                        .fontId = DEFAULT, 
-                        .fontSize = 12,
-                        .letterSpacing = 2
-                    }));
-                }
-                CLAY({
-                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
-                    .layout = {
-                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
-                    },
-                }){
-                    CLAY({
-                        .layout = {
-                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
-                        },
-                        .image = {&state.textures[SYMBOL_EXIT_16]}
-                    }){
-                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_dir_dialog_exit);
-                    }
-                }
-            }
+            title_bar_layout(CLAY_STRING("Select Directory"), func_dir_dialog_exit);
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
@@ -1399,37 +1304,7 @@ void confirm_menu_layout(void)
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             }
         }){
-            CLAY({
-                .backgroundColor = state.theme.secondary,
-                .layout = {
-                    .sizing = {.width=CLAY_SIZING_GROW()},
-                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
-                }
-            }){
-                CLAY({
-                    .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()},
-                        .padding = {.left=4}
-                    }
-                }){
-                    text_layout(CLAY_STRING("Confirm"), DEFAULT, 12, 2);
-                }
-                CLAY({
-                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
-                    .layout = {
-                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
-                    },
-                }){
-                    CLAY({
-                        .layout = {
-                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
-                        },
-                        .image = {&state.textures[SYMBOL_EXIT_16]}
-                    }){
-                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_no);
-                    }
-                }
-            }
+            title_bar_layout(CLAY_STRING("Confirm"), func_confirm_no);
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
@@ -1491,42 +1366,7 @@ void backup_dialog_layout(void)
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
             }
         }){
-            CLAY({
-                .backgroundColor = state.theme.secondary,
-                .layout = {
-                    .sizing = {.width=CLAY_SIZING_GROW()},
-                    .childAlignment = {.y=CLAY_ALIGN_Y_CENTER}
-                }
-            }){
-                CLAY({
-                    .layout = {
-                        .sizing = {.width=CLAY_SIZING_GROW()},
-                        .padding = {.left=4}
-                    }
-                }){
-                    CLAY_TEXT(clay_string(bd->is_backup? "Backup" : "Merge"), CLAY_TEXT_CONFIG({
-                        .textColor = state.theme.text,
-                        .fontId = DEFAULT, 
-                        .fontSize = 12,
-                        .letterSpacing = 2
-                    }));
-                }
-                CLAY({
-                    .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
-                    .layout = {
-                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
-                    },
-                }){
-                    CLAY({
-                        .layout = {
-                            .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
-                        },
-                        .image = {&state.textures[SYMBOL_EXIT_16]}
-                    }){
-                        Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_exit);
-                    }
-                }
-            }
+            title_bar_layout(clay_string(bd->is_backup? "Backup" : "Merge"), func_backup_dialog_exit);
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
