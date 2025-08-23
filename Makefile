@@ -1,5 +1,5 @@
 nob: nob.c
-	$(CC) -o nob nob.c
+	$(CC) -DNOB_WARN_DEPRECATED -o nob nob.c
 	@echo ""
 	@echo "Bootstrapped nob"
 	@echo "From now on, use ./nob to compile, it will rebuild automatically"

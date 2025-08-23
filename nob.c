@@ -56,7 +56,7 @@ bool build_lib(Nob_Cmd *cmd, bool compile_static)
         for (size_t i=0; i<lib_file_count; ++i){
             append_head(cmd);
             nob_cmd_append(cmd, "-c", src_files[i], "-o", obj_files[i], "-D", "CEBEQ_MSGQ");
-            nob_da_append(&procs, nob_cmd_run_async_and_reset(cmd));
+            nob_cmd_run(cmd, .async=&procs);
         }
         if (!nob_procs_wait(procs)) return false;
         // create static library
@@ -64,7 +64,7 @@ bool build_lib(Nob_Cmd *cmd, bool compile_static)
         for (size_t i=0; i<lib_file_count; ++i){
             nob_cmd_append(cmd, obj_files[i]);
         }
-        return nob_cmd_run_sync_and_reset(cmd);
+        return nob_cmd_run(cmd);
     } else {
         append_head(cmd);
         for (size_t i=0; i<lib_file_count; ++i){
@@ -77,7 +77,7 @@ bool build_lib(Nob_Cmd *cmd, bool compile_static)
     #else
         nob_cmd_append(cmd, "-fPIC", "-shared", "-o", "bin/libcebeq.so");
     #endif
-        return nob_cmd_run_sync_and_reset(cmd);
+        return nob_cmd_run(cmd);
     }
 }
 
@@ -98,7 +98,7 @@ bool build_cli(Nob_Cmd *cmd, bool compile_static)
     if (!compile_static)
         nob_cmd_append(cmd, "-Wl,-rpath,$ORIGIN");
 #endif
-    return nob_cmd_run_sync_and_reset(cmd);
+    return nob_cmd_run(cmd);
 }
 
 bool build_gui(Nob_Cmd *cmd, bool compile_static)
@@ -124,7 +124,7 @@ bool build_gui(Nob_Cmd *cmd, bool compile_static)
     nob_cmd_append(cmd, "-lGL", "-lm", "-lpthread", "-ldl", "-lrt", "-lX11");
 #endif
 
-    if (!nob_cmd_run_sync_and_reset(cmd)) {
+    if (!nob_cmd_run(cmd)){
         nob_log(NOB_ERROR, "Failed to build gui! Make sure that you have raylib in your path or in ./lib!");
         return false;
     }
