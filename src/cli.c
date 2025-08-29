@@ -105,9 +105,9 @@ int print_branches(Cson *branches)
     return 0;
 }
 
-void print_version(const char *program_name)
+void print_version(void)
 {
-    printf("%s - version %s\n", program_name, VERSION);
+    printf(PROGRAM_NAME" - version %s\n", VERSION);
 }
 
 void run(thread_fn fn, thread_args_t args)
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
                     return_defer(0);
                 }
                 if (strcmp(arg, "--version") == 0 || strcmp(arg, "-v") == 0){
-                    print_version(program_name);
+                    print_version();
                     return_defer(0);
                 }
                 if (strcmp(arg, "backup") == 0){

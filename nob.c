@@ -6,14 +6,29 @@
 #define NOB_IMPLEMENTATION
 #include "nob.h"
 
-const char *lib_files[] = {
-    "backup", "merge", "cwalk", "cson", "flib", "cebeq", "threading", "message_queue"
+#define LIB_FILES\
+    X("backup")\
+    X("merge")\
+    X("cwalk")\
+    X("cson")\
+    X("flib")\
+    X("cebeq")\
+    X("threading")\
+    X("message_queue")\
+    
+#define X(name) "src/"name".c",
+const char *src_files[] = {
+    LIB_FILES
 };
+#undef X
 
-#define lib_file_count sizeof(lib_files)/sizeof(*lib_files)
+#define X(name) "build/"name".o",
+const char *obj_files[] = {
+    LIB_FILES
+};
+#undef X
 
-char src_files[lib_file_count][32] = {0};
-char obj_files[lib_file_count][32] = {0};
+#define lib_file_count sizeof(src_files)/sizeof(src_files[0])
 
 void print_usage(const char *program_name)
 {
@@ -38,18 +53,9 @@ void append_head(Nob_Cmd *cmd)
     nob_cmd_append(cmd, "-I", "./include", "-I.");
 }
 
-void create_lib_files()
-{
-    for (size_t i=0; i<lib_file_count; ++i){
-        sprintf(src_files[i], "src/%s.c", lib_files[i]);
-        sprintf(obj_files[i], "build/%s.o", lib_files[i]);
-    }
-}
-
 bool build_lib(Nob_Cmd *cmd, bool compile_static)
 {
     nob_log(NOB_INFO, "Building cebeq library..");
-    create_lib_files();
     if (compile_static){
         // create object files asynchronously
         Nob_Procs procs = {0};
