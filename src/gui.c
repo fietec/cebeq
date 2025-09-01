@@ -592,6 +592,55 @@ void func_history_dialog_open(int index)
     }
 }
 
+void func_history_clear(void)
+{
+    if (state.selected_branch == -1) return;
+    const char *branch_name = state.branches.items[state.selected_branch].name;
+    Cson *branch = cson_get(state.cson_branches, key((char*) branch_name));
+    if (!cson_is_map(branch)) return;
+
+
+    if (state.confirm_dialog.result){
+        state.confirm_dialog.result = false;
+        Cson *backups = cson_get(branch, key("backups"));
+        if (cson_is_array(backups)){
+            size_t backup_count = cson_len(backups);
+            for (size_t i=0; i<backup_count; ++i){
+                char *backup_path = cson_get_cstring(backups, index(i));
+                printf("[INFO] Deleting '%s'\n", backup_path);
+                if (flib_delete_dir(backup_path) == 0){
+                    printf("[INFO] Successfully deleted '%s'.\n", backup_path);
+                }else{
+                    eprintf("Failed to delete %s!", backup_path);
+                }
+            }
+        } else{
+            eprintf("Missing 'backups' field in branch '%s'!", branch_name);
+            return;
+        } 
+    }
+
+    cson_map_insert(branch, cson_str("backups"), cson_array_new());
+    cson_map_insert(branch, cson_str("last_id"), cson_new_int(0));
+
+    cson_write(state.cson_info, state.info_path);
+    state.history_dialog.backups.count = 0;
+    func_history_dialog_init();
+}
+
+void func_history_ask(void)
+{
+    if (state.selected_branch == -1) return;
+    if (state.history_dialog.backups.count > 0){
+        state.confirm_dialog.question = CLAY_STRING("Do you want to delete all old backups?");
+        state.confirm_dialog.on_exit = &func_history_clear;
+        func_toggle_scene((void*) SCENE_CONFIRM);
+    } else{
+        state.confirm_dialog.result = false;
+        func_history_clear();
+    }
+}
+
 void func_run_dialog_init(void)
 {
     RunDialog *rn = &state.run_dialog;
@@ -1012,6 +1061,28 @@ void history_menu_layout(void)
                         state.cursor = MOUSE_CURSOR_POINTING_HAND;
                     }
                 }
+                if (hd->backups.count > 0){
+                    CLAY({
+                            .layout = {
+                                .childAlignment = {.x=CLAY_ALIGN_X_CENTER},
+                                .sizing = {.width=CLAY_SIZING_GROW()}
+                            },
+                    
+                        }){
+                        CLAY({
+                                .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
+                                .layout = {
+                                    .padding = TEXT_PADDING,
+                                }
+                            }){
+                            if (Clay_Hovered()){
+                                state.cursor = MOUSE_CURSOR_POINTING_HAND;
+                            }
+                            Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_history_ask);
+                            text_layout(CLAY_STRING("Clear History"), DEFAULT, 12, 0);
+                        }
+                    }
+                }
             }
         }
     }
@@ -1402,7 +1473,7 @@ void backup_dialog_layout(void)
                             int key = GetCharPressed();
 
                             while (key > 0){
-                                if ((key >= 32) && (key <= 125) && (bd->dest_len < FILENAME_MAX)){
+                                if ((key >= 32) && (key <= 126) && (bd->dest_len < FILENAME_MAX)){
                                     bd->dest[bd->dest_len] = (char)key;
                                     bd->dest[bd->dest_len+1] = '\0'; 
                                     bd->dest_len++;

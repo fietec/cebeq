@@ -9,6 +9,7 @@
 #include <cson.h>
 #include <threading.h>
 #include <message_queue.h>
+#include <flib.h>
 
 typedef enum{
     Cmd_None, Cmd_Backup, Cmd_Merge, Cmd_Branch
@@ -73,7 +74,9 @@ void print_branch_usage(const char *program_name)
     printf("Commands:\n");
     printf("  list [branch]         List all available branches or all backups of specified branch\n");
     printf("  new <name> <dirs>...  Create a new branch\n");
-    printf("  delete <name>         Delete a branch\n\n");
+    printf("  delete <name>         Delete a branch\n");
+    printf("  reset <name>          Resets a branch\n");
+    printf("\n");
     
     printf("Options for branch:\n");
     printf("  -h, --help            Show this help message\n");
@@ -307,6 +310,44 @@ int main(int argc, char **argv)
                         return_defer(0);
                     }else{
                         fprintf(stderr, "[ERROR] An error occured while deleting branch '%s': %s!\n", name, CsonErrorStrings[error]);
+                        return_defer(1);
+                    }
+                }
+                else if (strcmp(arg, "reset") == 0){
+                    if (argc == 0){
+                        fprintf(stderr, "[ERROR] No branch name provided!\n");
+                        print_branch_usage(program_name);
+                        return_defer(1);
+                    }
+                    Cson *branches = cson_get(info, key("branches"));
+                    if (!cson_is_map(branches)){
+                        fprintf(stderr, "[ERROR] Invalid info file state!\n");
+                        return_defer(1);
+                    }
+                    char *branch_name = (char*) shift_args(argc, argv);
+                    Cson *branch = cson_get(branches, key(branch_name));
+                    if (!cson_is_map(branch)){
+                        fprintf(stderr, "[ERROR] Unknown branch '%s'!\n", arg);
+                        fprintf(stdout, "Use '%s branch list' to see a list of all branches.\n", program_name);
+                        return_defer(1);
+                    }
+                    Cson *backups = cson_get(branch, key("backups"));
+                    if (cson_is_array(backups)){
+                        size_t backup_count = cson_len(backups);
+                        // TODO: ask for permission to delete backups
+                        for (size_t i=0; i<backup_count; ++i){
+                            char *backup_path = cson_get_cstring(backups, index(i));
+                            printf("[INFO] Deleting '%s'\n", backup_path);
+                            if (flib_delete_dir(backup_path) != 0){
+                                eprintf("Failed to delete '%s'!", backup_path);
+                            }
+                        }
+                        cson_map_insert(branch, cson_str("backups"), cson_array_new());
+                        cson_map_insert(branch, cson_str("last_id"), cson_new_int(0));
+                        cson_write(info, info_path);
+                        return_defer(0);
+                    } else{
+                        eprintf("Missing 'backups' field in branch '%s'!", branch_name);
                         return_defer(1);
                     }
                 }
