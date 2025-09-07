@@ -15,6 +15,7 @@
 #include <clay.h>
 #include <clay_renderer_raylib.c>
 
+#include <theme.h>
 #define NEW_BRANCH_MAX_LEN 32
 
 #define NO_COLOR ((Clay_Color) {0})
@@ -38,9 +39,9 @@ typedef enum{
 } Scene;
 
 typedef enum{
-    DEFAULT,
-    MONO_12,
-    MONO_16,
+    Font_DEFAULT,
+    Font_MONO_12,
+    Font_MONO_16,
     _FontId_Count
 } FontIds;
 
@@ -54,17 +55,6 @@ typedef enum{
     _TextureId_Count
 } TextureIds;
 
-typedef struct {
-    Clay_Color background;
-    Clay_Color text;
-    Clay_Color accent;
-    Clay_Color border;
-    Clay_Color hover;
-    Clay_Color secondary;
-    Clay_Color danger;
-    Clay_Color success;
-} Theme;
-
 typedef void (*FuncButtonData)(void);
 typedef void (*Callback)(void);
 
@@ -74,17 +64,6 @@ typedef struct{
 } ArgFuncButtonData;
 
 #define arg_func(func, arg) (ArgFuncButtonData){(func), (void*) (arg)}
-
-const Theme charcoal_teal = {
-    { 34,  43,  46,  255 },  // background
-    { 217, 225, 232, 255 },  // text
-    { 0,   191, 166, 255 },  // accent
-    { 55,  64,  69,  255 },  // border
-    { 2,   158, 136, 255 },  // hover
-    { 124, 138, 148, 255 },  // secondary
-    { 220,  53,  69,  255 }, // danger 
-    { 40,  167,  69,  255 }, // success
-};
 
 typedef struct{
     const char *name;
@@ -161,7 +140,13 @@ typedef struct{
 } HistoryDialog;
 
 typedef struct{
+    bool theme_selected;
+    size_t selected_theme;
+} SettingsDialog;
+
+typedef struct{
     Theme theme;
+    size_t selected_theme;
     Branches branches;
     int selected_branch;
     Texture2D textures[_TextureId_Count];
@@ -185,7 +170,6 @@ typedef struct{
 } State;
 
 static State state = {
-    .theme = charcoal_teal,
     .scene = SCENE_MAIN,
     .selected_branch = -1,
     .file_dialog = {
@@ -302,6 +286,19 @@ bool set_branches(void)
     return true;
 }
 
+void set_theme(const char *theme_name)
+{
+    for (size_t i=0; i<themes_count; ++i){
+        if (strcmp(themes[i].name, theme_name) == 0){
+            state.theme = themes[i];
+            state.selected_theme = i;
+            return;
+        }
+    }
+    state.theme = themes[0];
+    state.selected_theme = 0;
+}
+
 void HandleClayErrors(Clay_ErrorData errorData) {
     printf("%s", errorData.errorText.chars);
 }
@@ -326,6 +323,13 @@ void func_refresh(void)
         return;
     }
     (void) set_branches();
+    
+    const char *theme_name = cson_get_cstring(state.cson_info, key("theme"));
+    if (theme_name == NULL){
+        error("Could not find <theme> field in info file!");
+        return;
+    }
+    set_theme(theme_name);
 }
 
 void func_branch_exit(void)
@@ -689,6 +693,15 @@ void func_about_exit(void)
     func_toggle_scene((void*) SCENE_MAIN);
 }
 
+void func_settings_set_theme(size_t theme)
+{
+    if (theme >= themes_count) return;
+    state.theme = themes[theme];
+    state.selected_theme = theme;
+    cson_map_insert(state.cson_info, cson_str("theme"), cson_new_cstring((char*)themes[theme].name));
+    cson_write(state.cson_info, state.info_path);
+}
+
 void HandleFuncButtonInteraction(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
 {
     (void) id;
@@ -759,6 +772,14 @@ void HandleHistorySelectInteraction(Clay_ElementId id, Clay_PointerData pointer_
     }
 }
 
+void HandleThemeSelection(Clay_ElementId id, Clay_PointerData pointer_data, intptr_t user_data)
+{
+    (void) id;
+    if (pointer_data.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME){
+        func_settings_set_theme((size_t) user_data);
+    }
+}
+
 // render functions
 
 void text_layout(Clay_String string, uint16_t font_id, uint16_t font_size, uint16_t spacing)
@@ -788,7 +809,7 @@ void title_bar_layout(Clay_String title, Callback callback)
         }){
             CLAY_TEXT(title, CLAY_TEXT_CONFIG({
                 .textColor = state.theme.text,
-                .fontId = DEFAULT, 
+                .fontId = FONT_DEFAULT, 
                 .fontSize = 12,
                 .letterSpacing = 2
             }));
@@ -817,7 +838,7 @@ void title_bar_layout(Clay_String title, Callback callback)
 void settings_menu_layout(void)
 {
     CLAY({
-        .backgroundColor = BLUR_COLOR,
+        .backgroundColor = state.theme.blur,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -837,9 +858,33 @@ void settings_menu_layout(void)
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
-                    .sizing = {CLAY_SIZING_FIXED(196), CLAY_SIZING_FIXED(196)}
+                    .padding = CLAY_PADDING_ALL(8)
                 }
-            }){}
+            }){
+                CLAY({}){
+                    text_layout(CLAY_STRING("Theme:"), FONT_DEFAULT, 12, 1);
+                }
+                CLAY({
+                        .layout = {
+                            .sizing = {.height=CLAY_SIZING_GROW(0, 16*4.5)},
+                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                        },
+                        .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() },
+
+                    }){
+                    for (size_t i=0; i<themes_count; ++i){
+                        CLAY({
+                                .backgroundColor = (i == state.selected_theme)? state.theme.hover: (Clay_Hovered())? state.theme.secondary : NO_COLOR,
+                                .layout = {
+                                    .padding = {4, 4, 2, 2},
+                                },
+                            }){
+                            Clay_OnHover(HandleThemeSelection, (intptr_t) i);
+                            text_layout(clay_string(themes[i].name), Font_MONO_12, 12, 0);
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -847,7 +892,7 @@ void settings_menu_layout(void)
 void input_menu_layout(void)
 {
     CLAY({
-        .backgroundColor = BLUR_COLOR,
+        .backgroundColor = state.theme.blur,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -876,8 +921,8 @@ void input_menu_layout(void)
                     
                 }){
                     snprintf(state.temp_buffer, sizeof(state.temp_buffer), "(%d/%d)", state.new_branch_len, NEW_BRANCH_MAX_LEN);
-                    text_layout(CLAY_STRING("Insert the name for the branch: "), DEFAULT, 12, 1);
-                    text_layout(clay_string(state.temp_buffer), DEFAULT, 12, 1);
+                    text_layout(CLAY_STRING("Insert the name for the branch: "), FONT_DEFAULT, 12, 1);
+                    text_layout(clay_string(state.temp_buffer), FONT_DEFAULT, 12, 1);
                 }
                 CLAY({
                     .backgroundColor = state.theme.secondary,
@@ -913,9 +958,9 @@ void input_menu_layout(void)
                     }else{
                         state.cursor = MOUSE_CURSOR_DEFAULT;
                     }
-                    text_layout((Clay_String){false, state.new_branch_len, state.new_branch_name}, MONO_12, 12, 1);
+                    text_layout((Clay_String){false, state.new_branch_len, state.new_branch_name}, Font_MONO_12, 12, 1);
                     if (Clay_Hovered() && ((state.frame_counter/20)%2) == 0){
-                        text_layout(CLAY_STRING("_"), MONO_12, 12, 1);
+                        text_layout(CLAY_STRING("_"), Font_MONO_12, 12, 1);
                     }
                 }
                 CLAY({
@@ -929,7 +974,7 @@ void input_menu_layout(void)
                             .sizing = {.width=CLAY_SIZING_GROW()}
                         }
                     }){
-                        text_layout(CLAY_STRING("Dirs:"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("Dirs:"), FONT_DEFAULT, 12, 1);
                     }
                     CLAY({
                         .backgroundColor = Clay_Hovered()? state.theme.hover : state.theme.accent,
@@ -939,7 +984,7 @@ void input_menu_layout(void)
                     }){
                         if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_new_branch_add);
-                        text_layout(CLAY_STRING("Add"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("Add"), FONT_DEFAULT, 12, 1);
                     }
                 }
                 CLAY({
@@ -963,8 +1008,8 @@ void input_menu_layout(void)
                                     .childGap = 2
                                 }
                             }){
-                                text_layout(CLAY_STRING("-"), MONO_12, 12, 0);
-                                text_layout(clay_string(dirs.items[i].path), MONO_12, 12, 0);
+                                text_layout(CLAY_STRING("-"), Font_MONO_12, 12, 0);
+                                text_layout(clay_string(dirs.items[i].path), Font_MONO_12, 12, 0);
                             }
                             CLAY({
                                 .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
@@ -992,7 +1037,7 @@ void input_menu_layout(void)
                     }){
                         if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t)func_add_branch);
-                        text_layout(CLAY_STRING("Create"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("Create"), FONT_DEFAULT, 12, 1);
                     }
                 }
             }
@@ -1003,7 +1048,7 @@ void input_menu_layout(void)
 void history_menu_layout(void)
 {
     CLAY({
-        .backgroundColor = BLUR_COLOR,
+        .backgroundColor = state.theme.blur,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -1028,7 +1073,7 @@ void history_menu_layout(void)
                     .childGap = 4
                 }
             }){
-                text_layout(clay_string(hd->heading), DEFAULT, 12, 1);
+                text_layout(clay_string(hd->heading), FONT_DEFAULT, 12, 1);
                 CLAY({
                     .layout = {
                         .layoutDirection = CLAY_TOP_TO_BOTTOM,
@@ -1043,7 +1088,7 @@ void history_menu_layout(void)
                                 .sizing = {.width=CLAY_SIZING_GROW()},
                             }
                         }){
-                            text_layout(CLAY_STRING("  - "), MONO_12, 12, 0);
+                            text_layout(CLAY_STRING("  - "), Font_MONO_12, 12, 0);
                             CLAY({
                                 .backgroundColor = Clay_Hovered()? state.theme.secondary : NO_COLOR,
                                 .layout = {
@@ -1053,7 +1098,7 @@ void history_menu_layout(void)
                             }){
                                 if (Clay_Hovered()) backups_hovered = true;
                                 Clay_OnHover(HandleHistorySelectInteraction, (intptr_t) i);
-                                text_layout(hd->backups.items[i].text, MONO_12, 12, 0);
+                                text_layout(hd->backups.items[i].text, Font_MONO_12, 12, 0);
                             }
                         }
                     }
@@ -1079,7 +1124,7 @@ void history_menu_layout(void)
                                 state.cursor = MOUSE_CURSOR_POINTING_HAND;
                             }
                             Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_history_ask);
-                            text_layout(CLAY_STRING("Clear History"), DEFAULT, 12, 0);
+                            text_layout(CLAY_STRING("Clear History"), FONT_DEFAULT, 12, 0);
                         }
                     }
                 }
@@ -1090,7 +1135,7 @@ void history_menu_layout(void)
 void about_menu_layout(void)
 {
     CLAY({
-        .backgroundColor = BLUR_COLOR,
+        .backgroundColor = state.theme.blur,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -1121,8 +1166,8 @@ void about_menu_layout(void)
                         .padding = TEXT_PADDING
                     }
                 }){
-                    text_layout(CLAY_STRING("Cebeq v"), MONO_16, 16, 0);
-                    text_layout(CLAY_STRING(VERSION), MONO_16, 16, 0);
+                    text_layout(CLAY_STRING("Cebeq v"), Font_MONO_16, 16, 0);
+                    text_layout(CLAY_STRING(VERSION), Font_MONO_16, 16, 0);
                 }
                 CLAY({
                     .layout = {
@@ -1144,7 +1189,7 @@ void about_menu_layout(void)
                             .attachPoints = {.parent = CLAY_ATTACH_POINT_CENTER_TOP, .element = CLAY_ATTACH_POINT_CENTER_CENTER},
                         },
                     }){
-                        text_layout(CLAY_STRING("MIT License"), MONO_12, 12, 1);
+                        text_layout(CLAY_STRING("MIT License"), Font_MONO_12, 12, 1);
                     }
                     CLAY({
                         .layout = {
@@ -1162,12 +1207,12 @@ void about_menu_layout(void)
                         }){
                             CLAY_TEXT(CLAY_STRING("Copyright (c) 2025 Constantijn de Meer"), CLAY_TEXT_CONFIG({
                                 .textColor = state.theme.text,
-                                .fontId = MONO_12,
+                                .fontId = Font_MONO_12,
                                 .fontSize = 12,
                                 .textAlignment = CLAY_TEXT_ALIGN_CENTER
                             }));
                         }
-                        text_layout(license_text, MONO_12, 12, 0);
+                        text_layout(license_text, Font_MONO_12, 12, 0);
                     }
                 }
             }
@@ -1199,7 +1244,7 @@ void dir_input_menu_layout()
         fd->first_frame = false;
     }
     CLAY({
-        .backgroundColor = BLUR_COLOR,
+        .backgroundColor = state.theme.blur,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -1244,7 +1289,7 @@ void dir_input_menu_layout()
                         },
                         .clip = {.horizontal=true, .childOffset = Clay_GetScrollOffset()}
                     }){
-                        text_layout(clay_string(state.file_dialog.dir_path), MONO_12, 12, 0);
+                        text_layout(clay_string(state.file_dialog.dir_path), Font_MONO_12, 12, 0);
                     }
                     CLAY({
                         .layout = {
@@ -1294,7 +1339,7 @@ void dir_input_menu_layout()
                             }
                         }){
                             Clay_OnHover(HandleFileButtonInteraction, (intptr_t)i);
-                            text_layout(clay_string(file->name), MONO_12, 12, 0);
+                            text_layout(clay_string(file->name), Font_MONO_12, 12, 0);
                         }
                     }
                     if (IsKeyPressed(KEY_DOWN) || IsKeyPressedRepeat(KEY_DOWN)){
@@ -1337,7 +1382,7 @@ void dir_input_menu_layout()
                         }
                     }){
                         if (fd->item_index >= 0){
-                            text_layout(clay_string(fd->items.items[fd->item_index].name), MONO_12, 12, 0);
+                            text_layout(clay_string(fd->items.items[fd->item_index].name), Font_MONO_12, 12, 0);
                         }
                     }
                     CLAY({
@@ -1348,7 +1393,7 @@ void dir_input_menu_layout()
                     }){
                         if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_dir_dialog_set);
-                        text_layout(CLAY_STRING("Ok"), DEFAULT, 16, 0);
+                        text_layout(CLAY_STRING("Ok"), FONT_DEFAULT, 16, 0);
                     }
                 }
             }
@@ -1359,7 +1404,7 @@ void dir_input_menu_layout()
 void confirm_menu_layout(void)
 {
     CLAY({
-        .backgroundColor = BLUR_COLOR,
+        .backgroundColor = state.theme.blur,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -1384,7 +1429,7 @@ void confirm_menu_layout(void)
                     .childGap = 4
                 }
             }){
-                text_layout(state.confirm_dialog.question, DEFAULT, 12, 1);
+                text_layout(state.confirm_dialog.question, FONT_DEFAULT, 12, 1);
                 CLAY({
                     .layout = {
                         .sizing = {.width=CLAY_SIZING_GROW()},
@@ -1400,7 +1445,7 @@ void confirm_menu_layout(void)
                     }){
                         if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_yes);
-                        text_layout(CLAY_STRING("Yes"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("Yes"), FONT_DEFAULT, 12, 1);
                     }
                     CLAY({
                         .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
@@ -1410,7 +1455,7 @@ void confirm_menu_layout(void)
                     }){
                         if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_confirm_no);
-                        text_layout(CLAY_STRING("No"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("No"), FONT_DEFAULT, 12, 1);
                     }
                 }
             }
@@ -1422,7 +1467,7 @@ void backup_dialog_layout(void)
 {
     BackupDialog *bd = &state.backup_dialog;
     CLAY({
-        .backgroundColor = BLUR_COLOR,
+        .backgroundColor = state.theme.blur,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -1446,7 +1491,7 @@ void backup_dialog_layout(void)
                     .childGap = 4
                 }
             }){
-                text_layout(CLAY_STRING("Enter a destination:"), DEFAULT, 12, 1);
+                text_layout(CLAY_STRING("Enter a destination:"), FONT_DEFAULT, 12, 1);
                 CLAY({
                     .layout = {
                         .sizing = {.width=CLAY_SIZING_GROW()},
@@ -1487,9 +1532,9 @@ void backup_dialog_layout(void)
                             }
                             state.frame_counter++;
                         }
-                        text_layout((Clay_String){false, bd->dest_len, bd->dest}, MONO_12, 12, 1);
+                        text_layout((Clay_String){false, bd->dest_len, bd->dest}, Font_MONO_12, 12, 1);
                         if (Clay_Hovered() && ((state.frame_counter/20)%2) == 0){
-                            text_layout(CLAY_STRING("_"), MONO_12, 12, 1);
+                            text_layout(CLAY_STRING("_"), Font_MONO_12, 12, 1);
                         }
                     }
                     CLAY({
@@ -1499,7 +1544,7 @@ void backup_dialog_layout(void)
                         }
                     }){
                         if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
-                        text_layout(CLAY_STRING("Select"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("Select"), FONT_DEFAULT, 12, 1);
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_select);
                     }
                 }
@@ -1509,7 +1554,7 @@ void backup_dialog_layout(void)
                     }
                 }){
                     if (bd->is_backup){
-                        text_layout(CLAY_STRING("Create with parent:"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("Create with parent:"), FONT_DEFAULT, 12, 1);
                         CLAY({
                             .backgroundColor = state.theme.secondary,
                             .layout = {
@@ -1530,7 +1575,7 @@ void backup_dialog_layout(void)
                             }
                         }
                     } else{
-                        text_layout(CLAY_STRING("Select a backup:"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("Select a backup:"), FONT_DEFAULT, 12, 1);
                     }
                 }
                 CLAY({
@@ -1554,7 +1599,7 @@ void backup_dialog_layout(void)
                             }
                         }){
                             Clay_OnHover(HandleParentSelectInteraction, (intptr_t) i);
-                            text_layout(backup.text, MONO_12, 12, 0);
+                            text_layout(backup.text, Font_MONO_12, 12, 0);
                         }
                     }
                     if (bd->is_backup && !state.backup_dialog.prev_enable){
@@ -1583,7 +1628,7 @@ void backup_dialog_layout(void)
                     }){
                         if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_backup_dialog_create);
-                        text_layout(CLAY_STRING("Create"), DEFAULT, 16, 1);
+                        text_layout(CLAY_STRING("Create"), FONT_DEFAULT, 16, 1);
                     }
                 }
             }
@@ -1601,7 +1646,7 @@ void run_dialog_layout(void)
         }
     }
     CLAY({
-        .backgroundColor = BLUR_COLOR,
+        .backgroundColor = state.theme.blur,
         .floating = {
             .attachTo = CLAY_ATTACH_TO_ROOT,
             .attachPoints = {.element=CLAY_ATTACH_POINT_CENTER_CENTER, .parent=CLAY_ATTACH_POINT_CENTER_CENTER}
@@ -1634,7 +1679,7 @@ void run_dialog_layout(void)
                 }){
                     CLAY_TEXT(CLAY_STRING("Run"), CLAY_TEXT_CONFIG({
                         .textColor = state.theme.text,
-                        .fontId = DEFAULT, 
+                        .fontId = FONT_DEFAULT, 
                         .fontSize = 12,
                         .letterSpacing = 2
                     }));
@@ -1669,7 +1714,7 @@ void run_dialog_layout(void)
                             }
                         }){
                             CLAY_TEXT(string, CLAY_TEXT_CONFIG({
-                                .fontId = MONO_12,
+                                .fontId = Font_MONO_12,
                                 .fontSize = 12,
                                 .textColor = is_error? state.theme.danger : state.theme.text,
                             }));
@@ -1696,7 +1741,7 @@ void run_dialog_layout(void)
                     }){
                         if (Clay_Hovered()) state.cursor = MOUSE_CURSOR_POINTING_HAND;
                         Clay_OnHover(HandleFuncButtonInteraction, (intptr_t) func_run_dialog_exit);
-                        text_layout(CLAY_STRING("Exit"), DEFAULT, 12, 1);
+                        text_layout(CLAY_STRING("Exit"), FONT_DEFAULT, 12, 1);
                     }
                 }
             }
@@ -1717,7 +1762,7 @@ void branch_action_button_layout(Clay_String string, Clay_Color color, FuncButto
         }){
             CLAY_TEXT(string, CLAY_TEXT_CONFIG({
                 .textColor = state.theme.text,
-                .fontId = DEFAULT,
+                .fontId = FONT_DEFAULT,
                 .fontSize = 16,
                 .letterSpacing = 1
             }));
@@ -1739,7 +1784,7 @@ void action_button_layout(Clay_String string, FuncButtonData data)
     }){
         CLAY_TEXT(string, CLAY_TEXT_CONFIG({
             .textColor = state.theme.text,
-            .fontId = DEFAULT, 
+            .fontId = FONT_DEFAULT, 
             .fontSize = 18,
             .letterSpacing = 2,
         }));        
@@ -1761,7 +1806,7 @@ void render_task_menu_button(Clay_String string, FuncButtonData data)
     }){
         CLAY_TEXT(string, CLAY_TEXT_CONFIG({
             .textColor = state.theme.text,
-            .fontId = DEFAULT,
+            .fontId = FONT_DEFAULT,
             .fontSize = 12,
             .letterSpacing = 2
         }));
@@ -1803,7 +1848,7 @@ Clay_RenderCommandArray main_layout()
                 }){
                     CLAY_TEXT(CLAY_STRING("File"), CLAY_TEXT_CONFIG({
                         .textColor = state.theme.text,
-                        .fontId = DEFAULT,
+                        .fontId = FONT_DEFAULT,
                         .fontSize = 16
                     }));
                     bool hovered = Clay_PointerOver(Clay_GetElementId(CLAY_STRING("task_file_button"))) || Clay_PointerOver(Clay_GetElementId(CLAY_STRING("task_file_menu")));
@@ -1828,20 +1873,21 @@ Clay_RenderCommandArray main_layout()
                         }
                     }
                 }
-                /* CLAY({ */
-                /*     .backgroundColor = Clay_Hovered()? state.theme.hover : NO_COLOR, */
-                /*     .layout = { */
-                /*         .padding = {.left=8, .right=8, .top=4, .bottom=4}, */
-                /*         .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER} */
-                /*     }, */
-                /* }){ */
-                /*     CLAY_TEXT(CLAY_STRING("Settings"), CLAY_TEXT_CONFIG({ */
-                /*         .textColor = state.theme.text, */
-                /*         .fontId = DEFAULT, */
-                /*         .fontSize = 16 */
-                /*     })); */
-                /*     Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_SETTINGS); */
-                /* } */
+                CLAY({
+                    .backgroundColor = Clay_Hovered()? state.theme.hover : NO_COLOR,
+                    .layout = {
+                        .padding = {.left=8, .right=8, .top=4, .bottom=4},
+                        .childAlignment = {CLAY_ALIGN_X_CENTER, CLAY_ALIGN_Y_CENTER}
+                    },
+                }){
+                    CLAY_TEXT(CLAY_STRING("Settings"), CLAY_TEXT_CONFIG({
+                        .textColor = state.theme.text,
+                        .fontId = FONT_DEFAULT,
+                        .fontSize = 16
+                    }));
+                    Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_SETTINGS);
+                }
+                
                 CLAY({
                     .backgroundColor = Clay_Hovered()? state.theme.hover : NO_COLOR,
                     .layout = {
@@ -1851,7 +1897,7 @@ Clay_RenderCommandArray main_layout()
                 }){
                     CLAY_TEXT(CLAY_STRING("About"), CLAY_TEXT_CONFIG({
                         .textColor = state.theme.text,
-                        .fontId = DEFAULT,
+                        .fontId = FONT_DEFAULT,
                         .fontSize = 16
                     }));
                     Clay_OnHover(HandleSceneButtonInteraction, (intptr_t) SCENE_ABOUT);
@@ -1895,7 +1941,7 @@ Clay_RenderCommandArray main_layout()
                             }){
                                 CLAY_TEXT(CLAY_STRING("Select a branch:"), CLAY_TEXT_CONFIG({
                                     .textColor = state.theme.text,
-                                    .fontId = DEFAULT, 
+                                    .fontId = FONT_DEFAULT, 
                                     .fontSize = 16,
                                     .letterSpacing = 1
                                 }));
@@ -1912,7 +1958,7 @@ Clay_RenderCommandArray main_layout()
                                 
                                 CLAY_TEXT(CLAY_STRING("Refresh"), CLAY_TEXT_CONFIG({
                                     .textColor = state.theme.text,
-                                    .fontId = DEFAULT, 
+                                    .fontId = FONT_DEFAULT, 
                                     .fontSize = 16,
                                     .letterSpacing = 1
                                 }));
@@ -1948,7 +1994,7 @@ Clay_RenderCommandArray main_layout()
                                 }){
                                     CLAY_TEXT(branch.text, CLAY_TEXT_CONFIG({
                                         .textColor = state.theme.text,
-                                        .fontId = MONO_16, 
+                                        .fontId = Font_MONO_16, 
                                         .fontSize = 16,
                                     }));
                                     Clay_OnHover(HandleBranchButtonInteraction, (int) i);
@@ -2037,6 +2083,13 @@ int main(void) {
         return_defer(1);
     }
     if (!set_branches()) return_defer(1);
+
+    const char *theme_name = cson_get_cstring(state.cson_info, key("theme"));
+    if (theme_name == NULL){
+        error("Could not find <theme> field in info file!");
+        return_defer(1);
+    }
+    set_theme(theme_name);
     
     memcpy(state.file_dialog.dir_path, program_dir, sizeof(state.file_dialog.dir_path));
     
@@ -2052,12 +2105,12 @@ int main(void) {
     char font_path[FILENAME_MAX] = {0};    
     Font fonts[_FontId_Count];
     
-    fonts[DEFAULT] = GetFontDefault();
+    fonts[FONT_DEFAULT] = GetFontDefault();
     cwk_path_join(program_dir, "resources/JuliaMono-Regular.ttf", font_path, sizeof(font_path));
-    fonts[MONO_16] = LoadFontEx(font_path, 16, NULL, 400);
-    SetTextureFilter(fonts[MONO_16].texture, TEXTURE_FILTER_BILINEAR);
-    fonts[MONO_12] = LoadFontEx(font_path, 12, NULL, 400);
-    SetTextureFilter(fonts[MONO_12].texture, TEXTURE_FILTER_BILINEAR);
+    fonts[Font_MONO_16] = LoadFontEx(font_path, 16, NULL, 400);
+    SetTextureFilter(fonts[Font_MONO_16].texture, TEXTURE_FILTER_BILINEAR);
+    fonts[Font_MONO_12] = LoadFontEx(font_path, 12, NULL, 400);
+    SetTextureFilter(fonts[Font_MONO_12].texture, TEXTURE_FILTER_BILINEAR);
     
     Clay_SetMeasureTextFunction(Raylib_MeasureText, fonts);
     

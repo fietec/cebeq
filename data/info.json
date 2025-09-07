@@ -1,13 +1,4 @@
 {
-    "branches": {
-        "geoguessr": {
-            "last_id": 2,
-            "dirs": [
-                "/home/constantijn/geoguessr" 
-            ],
-            "backups": [
-                "/home/constantijn/programming/probes" 
-            ] 
-        } 
-    } 
+    "theme": "dark_neutral",
+    "branches": {} 
 }
