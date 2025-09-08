@@ -6,6 +6,8 @@ An incremental backup system written in C.
 - merging of incremental backups
 - cli and gui applications
 
+![Failed to load image](gui.png)
+
 > [!WARNING]
 > This project is still in development!
 
