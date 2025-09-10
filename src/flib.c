@@ -53,7 +53,7 @@ bool flib_read(const char *path, flib_cont *fc)
     return true;
 }
 
-bool create_dir(const char *path)
+bool flib_create_dir(const char *path)
 {
   #ifdef _WIN32
     const char *long_path = win_long_path(path);
@@ -91,7 +91,7 @@ int flib_delete_dir(const char *path)
     return rmdir(path);
 }
 
-int copy_file(const char *from, const char *to)
+int flib_copy_file(const char *from, const char *to)
 {
   #ifdef _WIN32
     const char *long_path = win_long_path(to);
@@ -154,7 +154,7 @@ int copy_file(const char *from, const char *to)
     return 1;
 }
 
-int copy_dir_rec(const char *src, const char *dest)
+int flib_copy_dir_rec(const char *src, const char *dest)
 {
     if (!flib_isdir(dest)){
         eprintf("Not a valid directory: '%s'!", dest);
@@ -178,10 +178,10 @@ int copy_dir_rec(const char *src, const char *dest)
             continue;
         }
         if (S_ISREG(attr.st_mode)){
-            copy_file(item_src_path, item_dest_path);
+            flib_copy_file(item_src_path, item_dest_path);
         } else if (S_ISDIR(attr.st_mode)){
-            if (!create_dir(item_dest_path)) continue;
-            copy_dir_rec(item_src_path, item_dest_path);
+            if (!flib_create_dir(item_dest_path)) continue;
+            flib_copy_dir_rec(item_src_path, item_dest_path);
         }else{
             break;
         }
@@ -190,7 +190,7 @@ int copy_dir_rec(const char *src, const char *dest)
     return 0;
 }
 
-int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore, size_t ignore_count)
+int flib_copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore, size_t ignore_count)
 {
     if (!flib_isdir(dest)){
         eprintf("Not a valid directory: '%s'!", dest);
@@ -218,10 +218,10 @@ int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore, 
             continue;
         }
         if (S_ISREG(attr.st_mode)){
-            copy_file(item_src_path, item_dest_path);
+            flib_copy_file(item_src_path, item_dest_path);
         } else if (S_ISDIR(attr.st_mode)){
-            if (!create_dir(item_dest_path)) continue;
-            copy_dir_rec(item_src_path, item_dest_path);
+            if (!flib_create_dir(item_dest_path)) continue;
+            flib_copy_dir_rec(item_src_path, item_dest_path);
         }else{
             break;
         }

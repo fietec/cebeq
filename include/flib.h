@@ -65,11 +65,11 @@ CBQLIB bool flib_exists(const char *path);
 CBQLIB bool flib_isfile(const char *path);
 CBQLIB bool flib_isdir(const char *path);
  
-CBQLIB bool create_dir(const char *path);
+CBQLIB bool flib_create_dir(const char *path);
 CBQLIB int flib_delete_dir(const char *path);
-CBQLIB int copy_file(const char *from, const char *to);
-CBQLIB int copy_dir_rec(const char *src, const char *dest);
-CBQLIB int copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore_names, size_t ignore_count);
+CBQLIB int flib_copy_file(const char *from, const char *to);
+CBQLIB int flib_copy_dir_rec(const char *src, const char *dest);
+CBQLIB int flib_copy_dir_rec_ignore(const char *src, const char *dest, const char **ignore_names, size_t ignore_count);
 
 CBQLIB bool flib_get_entry(DIR *dir, const char *path, flib_entry *entry);
 CBQLIB fsize_t flib_dir_size(DIR *dir, const char *path);

@@ -11,9 +11,13 @@
 #include <message_queue.h>
 #include <flib.h>
 
+#define NOB_STRIP_PREFIX
+#include <nob.h>
+#undef shift_args
+
 typedef enum{
     Cmd_None, Cmd_Backup, Cmd_Merge, Cmd_Branch
-} Cmd;
+} Command;
 
 static thread_t worker_thread;
 
@@ -131,7 +135,7 @@ void run(thread_fn fn, thread_args_t args)
 
 int main(int argc, char **argv)
 {
-    int value = 0;
+    int result = 0;
     if (!setup()) return_defer(1);
     
     char info_path[FILENAME_MAX] = {0};
@@ -143,7 +147,7 @@ int main(int argc, char **argv)
         return_defer(1);
     }    
     const char *program_name = shift_args(argc, argv);
-    Cmd current_command = Cmd_None;
+    Command current_command = Cmd_None;
     
     thread_args_t command_options = {0};
     size_t command_option_count = 0;
@@ -388,5 +392,5 @@ int main(int argc, char **argv)
     }
   defer:
     cleanup();
-    return value;
+    return result;
 }

@@ -7,6 +7,10 @@
 #include <cson.h>
 #include <message_queue.h>
 
+#define NOB_STRIP_PREFIX
+#define NOB_IMPLEMENTATION
+#include <nob.h>
+
 #ifdef _WIN32
 #include <windows.h>
 #elif __APPLE__
@@ -60,6 +64,27 @@ void escape_string(const char *string, char *buffer, size_t buffer_size)
         }
     }
     buffer[wi] = '\0';
+}
+
+void normalize_path(char *path, char *buffer, size_t buffer_size)
+{
+    String_Builder sb = {0};
+    char *pr = path;
+    char *seg_end = NULL;
+    char *home_env = getenv("HOME");
+    if (home_env != NULL){
+        while ((seg_end = strchr(pr, '~')) != NULL){
+            sb_append_buf(&sb, pr, seg_end-pr);
+            sb_append_cstr(&sb, home_env);
+            pr = seg_end+1;
+        }
+        seg_end = strchr(pr, '\0');
+        sb_append_buf(&sb, pr, seg_end-pr);
+        cwk_path_normalize(sb.items, buffer, buffer_size);
+        free(sb.items);
+    } else{
+        cwk_path_normalize(path, buffer, buffer_size);
+    }
 }
 
 bool get_exe_path(char *buffer, size_t buffer_size)

@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define NOB_STRIP_PREFIX
+#include <nob.h>
+
 #include <cebeq.h>
 #include <cwalk.h>
 #include <cson.h>
@@ -9,17 +12,17 @@
 #include <flib.h>
 #include <threading.h>
 #include <message_queue.h>
+#include <theme.h>
 
 #include <raylib.h>
 #define CLAY_IMPLEMENTATION
 #include <clay.h>
 #include <clay_renderer_raylib.c>
 
-#include <theme.h>
+
 #define NEW_BRANCH_MAX_LEN 32
 
 #define NO_COLOR ((Clay_Color) {0})
-#define BLUR_COLOR ((Clay_Color) {255, 255, 255, 51})
 #define TEXT_PADDING (Clay_Padding){8, 8, 4, 4}
 #define clay_string(str) (Clay_String) {false, strlen(str), str}
 
@@ -669,6 +672,7 @@ void func_backup_dialog_create(void)
 {
     BackupDialog *bd = &state.backup_dialog;
     RunDialog *rn = &state.run_dialog;
+    normalize_path(bd->dest, bd->dest, sizeof(bd->dest));
     if (!flib_isdir(bd->dest)) return;
     thread_args_t args;
     if (bd->is_backup){
@@ -2068,7 +2072,7 @@ Clay_RenderCommandArray main_layout()
 int main(void) {
     if (!setup()) return 1;
     
-    int value = 0;    
+    int result = 0;    
     cwk_path_join(program_dir, BACKUPS_JSON, state.info_path, sizeof(state.info_path));
     
     state.cson_info = cson_read(state.info_path);
@@ -2174,5 +2178,5 @@ int main(void) {
   defer:
     Clay_Raylib_Close();
     cleanup();
-    return value;
+    return result;
 }

@@ -10,6 +10,9 @@
 #include <cwalk.h>
 #include <flib.h>
 
+#define NOB_STRIP_PREFIX
+#include <nob.h>
+
 char temp_path_buffer[FILENAME_MAX];
 
 void format_time(time_t *rawtime, char *buffer, size_t buffer_size){
@@ -21,7 +24,7 @@ void format_time(time_t *rawtime, char *buffer, size_t buffer_size){
 bool path_in_backup(const char *path, const char *backup)
 {
     if (path == NULL || backup == NULL) return false;
-    bool value = true;
+    bool result = true;
     char info_path[FILENAME_MAX] = {0};
     cwk_path_join(backup, INFO_FILE, info_path, FILENAME_MAX);
     
@@ -41,12 +44,12 @@ bool path_in_backup(const char *path, const char *backup)
     }
     return_defer(false);
   defer:
-    return value;
+    return result;
 }
 
 int make_backup_rec(const char *src, const char *dest, const char *prev)
 {
-    int value = 0;
+    int result = 0;
     Cson *root = cson_map_new();
     Cson *files = cson_map_new();
     Cson *dirs = cson_map_new();
@@ -129,13 +132,13 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
                             cwk_path_join(prev, entry.name, item_prev_path, FILENAME_MAX);
                             p = item_prev_path;
                         }
-                        if (!create_dir(item_dest_path)) return_defer(1);
+                        if (!flib_create_dir(item_dest_path)) return_defer(1);
                         if (make_backup_rec(entry.path, item_dest_path, p) == 1) return_defer(1);
                         continue;
                     }
                 }
                 cson_map_insert(dirs, entry_key, cson_new_int(0));
-                if (!create_dir(item_dest_path)) return_defer(1);
+                if (!flib_create_dir(item_dest_path)) return_defer(1);
                 if (make_backup_rec(entry.path, item_dest_path, NULL) == 1) return_defer(1);
                 
             } break;
@@ -174,7 +177,7 @@ int make_backup_rec(const char *src, const char *dest, const char *prev)
     
   defer:
     closedir(dir);
-    return value;
+    return result;
 }
 
 int backup_init(const char *src, const char *dest, const char *parent)
@@ -192,7 +195,7 @@ int backup_init(const char *src, const char *dest, const char *parent)
     cwk_path_get_basename(src, &name, &name_length);
     cwk_path_join(dest, name, dest_path, FILENAME_MAX);
 
-    if (!create_dir(dest_path)) return 1;
+    if (!flib_create_dir(dest_path)) return 1;
     if (parent == NULL){
         return make_backup_rec(src, dest_path, NULL);
     }
@@ -214,7 +217,7 @@ int backup(const char *branch_name, const char *dest, const char *parent)
         eprintf("Parent backup no longer exists: '%s'!", parent);
         return 1;
     }
-    int value = 0;
+    int result = 0;
     time_t start_time = time(NULL);
     
     CsonArena arena = {0};
@@ -250,7 +253,7 @@ int backup(const char *branch_name, const char *dest, const char *parent)
     
     iprintf("Creating backup '%s'..", dest_name);
     
-    if (!create_dir(dest_path)) return_defer(1);
+    if (!flib_create_dir(dest_path)) return_defer(1);
     
     for (size_t i=0; i<cson_len(dirs); ++i){
         const char *src = cson_get_string(cson_array_get(dirs, i)).value;
@@ -300,7 +303,7 @@ int backup(const char *branch_name, const char *dest, const char *parent)
     iprintf("Successfully created backup for branch '%s' at '%s'", branch_name, dest_path);
   defer:
     cson_swap_and_free_arena(prev_arena);
-    return value;
+    return result;
 }
 
 void* tbackup(void *pargs)

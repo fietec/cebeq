@@ -43,10 +43,7 @@
 
 #define arr_len(arr) (sizeof((arr)) / sizeof((arr)[0])) 
 
-#define return_defer(v) do{value = (v); goto defer;}while(0)
 #define return_defer_label(l, v) do{value = (v); goto l;}while(0)
-
-#define TODO(message) do { fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, message); abort(); } while(0)
 
 #ifdef CEBEQ_MSGQ
     #ifdef CEBEQ_COLOR
@@ -82,8 +79,6 @@
     #endif // CEBEQ_DEBUG
 #endif // CEBEQ_MSGQ
 
-#define UNREACHABLE(...) (eprintf(__VA_ARGS__), assert(0))
-
 typedef struct{
     const char *args[3];
 } thread_args_t;
@@ -105,5 +100,6 @@ CBQLIB int merge(const char *src, const char *dest);
 CBQLIB bool get_exe_path(char *buffer, size_t buffer_size);
 CBQLIB bool get_parent_dir(const char *path, char *buffer, size_t buffer_size);
 CBQLIB void escape_string(const char *string, char *buffer, size_t buffer_size);
+CBQLIB void normalize_path( char *path, char *buffer, size_t buffer_size);
 
 #endif // _CEBEQ_H

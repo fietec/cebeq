@@ -6,6 +6,9 @@
 #include <cwalk.h>
 #include <flib.h>
 
+#define NOB_STRIP_PREFIX
+#include <nob.h>
+
 int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
 {
     DIR *dir = opendir(src);
@@ -19,7 +22,7 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
         return 1;
     }
     
-    int value = 0;
+    int result = 0;
     
     char info_path[FILENAME_MAX] = {0};
     cwk_path_join(src, INFO_FILE, info_path, FILENAME_MAX);
@@ -82,7 +85,7 @@ int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
     
   defer:
     closedir(dir);
-    return value;
+    return result;
 }
 
 int merge_root(const char *src, const char *dest)
@@ -98,7 +101,7 @@ int merge_root(const char *src, const char *dest)
         return 1;
     }
     
-    int value = 0;
+    int result = 0;
     
     CsonArena arena = {0};
     CsonArena *prev_arena = cson_current_arena;
@@ -150,7 +153,7 @@ int merge_root(const char *src, const char *dest)
                     eprintf("Found unregistered dir '%s'!", entry.path);
                     return_defer(1);
                 }
-                if (!flib_isdir(item_dest_path) && !create_dir(item_dest_path)) continue;
+                if (!flib_isdir(item_dest_path) && !flib_create_dir(item_dest_path)) continue;
                 if (merge_root(entry.path, item_dest_path) == 1){
                     eprintf("Failed to merge '%s'!", entry.path);
                 }
@@ -165,7 +168,7 @@ int merge_root(const char *src, const char *dest)
   defer:
     cson_swap_and_free_arena(prev_arena);
     closedir(dir);
-    return value;
+    return result;
 }
 
 int merge(const char *src, const char *dest)
@@ -181,13 +184,13 @@ int merge(const char *src, const char *dest)
         return 1;
     }
     
-    int value = 0;
+    int result = 0;
     char item_dest_path[FILENAME_MAX] = {0};
     flib_entry entry;
     while (flib_get_entry(dir, src, &entry)){
         if (entry.type == FLIB_DIR){
             cwk_path_join(dest, entry.name, item_dest_path, FILENAME_MAX);
-            if (!create_dir(item_dest_path)) return_defer(1);
+            if (!flib_create_dir(item_dest_path)) return_defer(1);
             iprintf("Merging '%s'..", entry.name);
             if (merge_root(entry.path, item_dest_path) == 1){
                 eprintf("Failed to merge '%s'!", entry.name);
@@ -199,7 +202,7 @@ int merge(const char *src, const char *dest)
     }
   defer:
     closedir(dir);
-    return value;
+    return result;
 }
 
 void* tmerge(void *pargs)
