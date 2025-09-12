@@ -30,8 +30,6 @@ volatile int worker_done = 0;
 
 bool setup(void)
 {
-    (void) cson_current_arena;
-    
     if (!get_exe_path(exe_path, sizeof(exe_path))){
         eprintf("Failed to retrieve executable path!");
         return false;
@@ -80,6 +78,7 @@ void normalize_path(char *path, char *buffer, size_t buffer_size)
         }
         seg_end = strchr(pr, '\0');
         sb_append_buf(&sb, pr, seg_end-pr);
+        sb_append_null(&sb);
         cwk_path_normalize(sb.items, buffer, buffer_size);
         free(sb.items);
     } else{
