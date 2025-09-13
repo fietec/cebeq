@@ -5,13 +5,17 @@
 #include <stdatomic.h>
 #include <time.h>
 
+#define NOB_NO_MINIRENT
+#define NOB_STRIP_PREFIX
+#include <nob.h>
+#undef ERROR
+
 #include <cebeq.h>
 #include <cson.h>
 #include <cwalk.h>
 #include <flib.h>
 
-#define NOB_STRIP_PREFIX
-#include <nob.h>
+
 
 char temp_path_buffer[FILENAME_MAX];
 

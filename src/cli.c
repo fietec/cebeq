@@ -4,6 +4,11 @@
 
 #define CEBEQ_COLOR
 
+#define NOB_NO_MINIRENT
+#define NOB_STRIP_PREFIX
+#include <nob.h>
+#undef shift_args
+
 #include <cebeq.h>
 #include <cwalk.h>
 #include <cson.h>
@@ -11,9 +16,6 @@
 #include <message_queue.h>
 #include <flib.h>
 
-#define NOB_STRIP_PREFIX
-#include <nob.h>
-#undef shift_args
 
 typedef enum{
     Cmd_None, Cmd_Backup, Cmd_Merge, Cmd_Branch

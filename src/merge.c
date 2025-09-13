@@ -1,13 +1,17 @@
 #include <stdbool.h>
 #include <string.h>
 
+#define NOB_NO_MINIRENT
+#define NOB_STRIP_PREFIX
+#include <nob.h>
+#undef ERROR
+
 #include <cebeq.h>
 #include <cson.h>
 #include <cwalk.h>
 #include <flib.h>
 
-#define NOB_STRIP_PREFIX
-#include <nob.h>
+
 
 int merge_rec(const char *src, const char *dest, Cson *files, Cson *dirs)
 {
