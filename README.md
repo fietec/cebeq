@@ -13,7 +13,7 @@ An incremental backup system written in C.
 
 
 ### Building
-The intended build system is [nob](https://github.com/tsoding/nob.h).  
+The intended build system is [nob.h](https://github.com/tsoding/nob.h).  
 To bootstrap nob, simply run: `cc -o nob nob.c` or `make`.  
 After that use `./nob` with a specified target to build the project.  
 See `./nob --help` for more information.
@@ -29,4 +29,4 @@ See `./nob --help` for more information.
 This project uses [raylib](https://github.com/raysan5/raylib) as a graphical backend. See their wiki for build instructions. 
 
 Make sure to either place the compiled `.a` file into the `lib` directory or have it in your path.  
-Alternatively, you can download a pre-built binary from the [`release`](https://github.com/fietec/cebeq/releases) tab which also ships raylib.
+Alternatively, you can download a pre-built binaries from the [`release`](https://github.com/fietec/cebeq/releases) tab which also ship raylib.
