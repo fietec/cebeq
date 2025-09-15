@@ -32,7 +32,7 @@
 #define MAX_MSG_LEN 256
 
 #define PROGRAM_NAME "cebeq"
-#define VERSION "0.2.1"
+#define VERSION "0.2.2"
 #define INFO_FILE "." PROGRAM_NAME
 #define BACKUPS_JSON "data/info.json"
 
