@@ -53,6 +53,8 @@ typedef enum{
     SYMBOL_REFRESH_16,
     SYMBOL_BACK_16,
     SYMBOL_FWD_16,
+    SYMBOL_UP_16,
+    SYMBOL_DOWN_16,
     SYMBOL_DELETE_12,
     SYMBOL_CHECK_12,
     _TextureId_Count
@@ -141,11 +143,6 @@ typedef struct{
     char heading[64];
     Branches backups;
 } HistoryDialog;
-
-typedef struct{
-    bool theme_selected;
-    size_t selected_theme;
-} SettingsDialog;
 
 typedef struct{
     Theme theme;
@@ -811,12 +808,7 @@ void title_bar_layout(Clay_String title, Callback callback)
                 .padding = {.left=4}
             }
         }){
-            CLAY_TEXT(title, CLAY_TEXT_CONFIG({
-                .textColor = state.theme.text,
-                .fontId = FONT_DEFAULT, 
-                .fontSize = 12,
-                .letterSpacing = 2
-            }));
+            text_layout(title, FONT_DEFAULT, 12, 2);
         }
         CLAY({
             .backgroundColor = Clay_Hovered()? darken_color(state.theme.danger) : state.theme.danger,
@@ -841,6 +833,7 @@ void title_bar_layout(Clay_String title, Callback callback)
 
 void settings_menu_layout(void)
 {
+    // TODO: there's a little graphical bug where the content background is drawn a little bit too wide, fix this
     CLAY({
         .backgroundColor = state.theme.blur,
         .floating = {
@@ -862,29 +855,66 @@ void settings_menu_layout(void)
             CLAY({
                 .backgroundColor = state.theme.background,
                 .layout = {
-                    .padding = CLAY_PADDING_ALL(8)
+                    .padding = CLAY_PADDING_ALL(2),
+                    .sizing = {.height=CLAY_SIZING_FIT(4.5*1)}
                 }
             }){
-                CLAY({}){
-                    text_layout(CLAY_STRING("Theme:"), FONT_DEFAULT, 12, 1);
-                }
                 CLAY({
+                        .border = {.color=state.theme.accent, .width=CLAY_BORDER_OUTSIDE(1)},
                         .layout = {
-                            .sizing = {.height=CLAY_SIZING_GROW(0, 16*4.5)},
-                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                        },
-                        .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() },
-
+                            .padding = CLAY_PADDING_ALL(4),
+                            .childGap = 4,
+                        }
+                }){
+                    text_layout(CLAY_STRING("Theme:"), FONT_DEFAULT, 12, 1);
+                    CLAY({
+                            .layout = {
+                                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                            },
                     }){
-                    for (size_t i=0; i<themes_count; ++i){
+                        bool hovered = Clay_PointerOver(Clay_GetElementId(CLAY_STRING("theme_view_button"))) || Clay_PointerOver(Clay_GetElementId(CLAY_STRING("theme_view_frame")));
                         CLAY({
-                                .backgroundColor = (i == state.selected_theme)? state.theme.hover: (Clay_Hovered())? state.theme.secondary : NO_COLOR,
+                                .id = CLAY_ID("theme_view_button"),
                                 .layout = {
-                                    .padding = {4, 4, 2, 2},
-                                },
-                            }){
-                            Clay_OnHover(HandleThemeSelection, (intptr_t) i);
-                            text_layout(clay_string(themes[i].name), Font_MONO_12, 12, 0);
+                                    .childGap = 4,
+                                }
+                        }){
+                            text_layout(clay_string(themes[state.selected_theme].name), FONT_DEFAULT, 12, 1);
+                            CLAY({
+                                    .layout = {
+                                        .sizing = {CLAY_SIZING_FIXED(16), CLAY_SIZING_FIXED(16)}
+                                    },
+                                    .image = {&state.textures[hovered? SYMBOL_UP_16 : SYMBOL_DOWN_16]}
+                            }){}
+                        }
+                        if (hovered){
+                            CLAY({
+                                    .id = CLAY_ID("theme_view_frame"),
+                                    .backgroundColor = state.theme.background,
+                                    .layout = {
+                                        .sizing = {.height=CLAY_SIZING_FIXED(16*4.5), .width=CLAY_SIZING_GROW()},
+                                        .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                                    },
+                                    .clip = { .vertical = true, .childOffset = Clay_GetScrollOffset() },
+                                    .floating = {
+                                        .attachTo = CLAY_ATTACH_TO_PARENT,
+                                        .attachPoints = {.element=CLAY_ATTACH_POINT_LEFT_TOP, .parent=CLAY_ATTACH_POINT_LEFT_BOTTOM}
+                                    },
+                                    .border = {.color=state.theme.secondary, .width=CLAY_BORDER_OUTSIDE(1)}
+                                }){
+                                for (size_t i=0; i<themes_count; ++i){
+                                    CLAY({
+                                            .backgroundColor = (i == state.selected_theme)? state.theme.hover: (Clay_Hovered())? darken_color(themes[i].hover) : NO_COLOR,
+                                            .layout = {
+                                                .padding = {4, 4, 2, 2},
+                                                .sizing = {.width=CLAY_SIZING_GROW()},
+                                            },
+                                        }){
+                                        Clay_OnHover(HandleThemeSelection, (intptr_t) i);
+                                        text_layout(clay_string(themes[i].name), Font_MONO_12, 12, 0);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -2126,6 +2156,10 @@ int main(void) {
     state.textures[SYMBOL_BACK_16] = LoadTexture(font_path);
     cwk_path_join(program_dir, "resources/MaterialIcons/arrow_forward_16.png", font_path, sizeof(font_path));
     state.textures[SYMBOL_FWD_16] = LoadTexture(font_path);
+    cwk_path_join(program_dir, "resources/MaterialIcons/drop_up_16.png", font_path, sizeof(font_path));
+    state.textures[SYMBOL_UP_16] = LoadTexture(font_path);
+    cwk_path_join(program_dir, "resources/MaterialIcons/drop_down_16.png", font_path, sizeof(font_path));
+    state.textures[SYMBOL_DOWN_16] = LoadTexture(font_path);
     cwk_path_join(program_dir, "resources/MaterialIcons/delete_12.png", font_path, sizeof(font_path));
     state.textures[SYMBOL_DELETE_12] = LoadTexture(font_path);
     cwk_path_join(program_dir, "resources/MaterialIcons/check_12.png", font_path, sizeof(font_path));
