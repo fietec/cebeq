@@ -36,6 +36,7 @@ bool setup(void)
     }
     (void) get_parent_dir(exe_path, exe_dir, sizeof(exe_dir));
     (void) get_parent_dir(exe_dir, program_dir, sizeof(program_dir));
+    nob_minimal_log_level = NOB_WARNING;
     return true;
 }
 
