@@ -16,8 +16,6 @@ typedef struct {
     Clay_Color blur;
 } Theme;
 
-// TODO: autogenerate this into a separate file and include <theme.h>
-
 const Theme themes[] = {
     {
         "charcoal_teal",         // dark charcoal with teal accents

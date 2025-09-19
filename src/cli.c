@@ -159,6 +159,7 @@ int main(int argc, char **argv)
         print_usage(program_name);
         return_defer(1);
     }
+    bool keep_backups = false;
     while (argc > 0){
         const char *arg = shift_args(argc, argv);
         switch (current_command){
@@ -339,13 +340,14 @@ int main(int argc, char **argv)
                     }
                     Cson *backups = cson_get(branch, key("backups"));
                     if (cson_is_array(backups)){
-                        size_t backup_count = cson_len(backups);
-                        // TODO: ask for permission to delete backups
-                        for (size_t i=0; i<backup_count; ++i){
-                            char *backup_path = cson_get_cstring(backups, index(i));
-                            printf("[INFO] Deleting '%s'\n", backup_path);
-                            if (flib_delete_dir(backup_path) != 0){
-                                eprintf("Failed to delete '%s'!", backup_path);
+                        if (!keep_backups){
+                            size_t backup_count = cson_len(backups);
+                            for (size_t i=0; i<backup_count; ++i){
+                                char *backup_path = cson_get_cstring(backups, index(i));
+                                printf("[INFO] Deleting '%s'\n", backup_path);
+                                if (flib_delete_dir(backup_path) != 0){
+                                    eprintf("Failed to delete '%s'!", backup_path);
+                                }
                             }
                         }
                         cson_map_insert(branch, cson_str("backups"), cson_array_new());
@@ -356,6 +358,9 @@ int main(int argc, char **argv)
                         eprintf("Missing 'backups' field in branch '%s'!", branch_name);
                         return_defer(1);
                     }
+                }
+                else if (strcmp(arg, "--keep") == 0 || strcmp(arg, "-k") == 0){
+                    keep_backups = true;
                 }
                 else if (strcmp(arg, "--help") == 0 || strcmp(arg, "-h") == 0){
                     print_branch_usage(program_name);

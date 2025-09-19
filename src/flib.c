@@ -93,7 +93,7 @@ int flib_delete_dir(const char *path)
 
 int flib_copy_file(const char *from, const char *to)
 {
-  #ifdef _WIN32
+#ifdef _WIN32
     const char *long_path = win_long_path(to);
     if (CopyFile(from, long_path, false) == 0){
         LPVOID error = win_get_last_error();
@@ -102,27 +102,35 @@ int flib_copy_file(const char *from, const char *to)
         return 1;
     }
     return 0;
-  #endif // _WIN32
-    // TODO: copy file ownership and permissions
-    int fd_to, fd_from;
+#else
+    int fd_to = -1, fd_from = -1;
     char buffer[4096];
     ssize_t nread;
     int saved_errno;
+    struct stat st;
+
+    if (stat(from, &st) < 0) {
+        eprintf("Could not stat file '%s': %s\n", from, strerror(errno));
+        return 1;
+    }
 
     fd_from = open(from, O_RDONLY);
     if (fd_from < 0){
-        eprintf("Could not read file '%s'!", from);
+        eprintf("Could not read file '%s': %s\n", from, strerror(errno));
         return 1;
     }
 
-    fd_to = open(to, O_WRONLY | O_CREAT, 0666);
+    fd_to = open(to, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode & 0777);
     if (fd_to < 0){
-        eprintf("Could not write file '%s'!", to);
+        eprintf("Could not write file '%s': %s\n", to, strerror(errno));
+        close(fd_from);
         return 1;
     }
-    while (nread = read(fd_from, buffer, sizeof(buffer)), nread > 0){
+
+    while ((nread = read(fd_from, buffer, sizeof(buffer))) > 0){
         char *out_ptr = buffer;
         ssize_t nwritten;
+
         do {
             nwritten = write(fd_to, out_ptr, nread);
             if (nwritten >= 0){
@@ -136,6 +144,20 @@ int flib_copy_file(const char *from, const char *to)
     }
 
     if (nread == 0){
+        // Copy ownership (ignore errors if not root)
+        fchown(fd_to, st.st_uid, st.st_gid);
+
+        // Copy permissions (in case umask interfered)
+        fchmod(fd_to, st.st_mode & 0777);
+
+        // Copy timestamps
+#if defined(HAVE_FUTIMENS) || (_POSIX_C_SOURCE >= 200809L)
+        struct timespec times[2];
+        times[0] = st.st_atim;
+        times[1] = st.st_mtim;
+        futimens(fd_to, times);
+#endif
+
         if (close(fd_to) < 0){
             fd_to = -1;
             goto out_error;
@@ -143,15 +165,15 @@ int flib_copy_file(const char *from, const char *to)
         close(fd_from);
         return 0;
     }
-  out_error:
-    saved_errno = errno;
 
+out_error:
+    saved_errno = errno;
     close(fd_from);
     if (fd_to >= 0) close(fd_to);
-
     errno = saved_errno;
     eprintf("Failed to copy '%s' -> '%s': %s!", from, to, strerror(errno));
     return 1;
+#endif
 }
 
 int flib_copy_dir_rec(const char *src, const char *dest)

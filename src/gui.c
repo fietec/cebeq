@@ -856,7 +856,7 @@ void settings_menu_layout(void)
                 .backgroundColor = state.theme.background,
                 .layout = {
                     .padding = CLAY_PADDING_ALL(2),
-                    .sizing = {.height=CLAY_SIZING_FIT(4.5*1)}
+//                    .sizing = {.width=CLAY_SIZING_FIT(228), .height=CLAY_SIZING_FIT(128)}
                 }
             }){
                 CLAY({
