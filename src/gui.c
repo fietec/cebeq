@@ -8,7 +8,6 @@
 #include <cebeq.h>
 #include <cwalk.h>
 #include <cson.h>
-#include <nob.h>
 #include <flib.h>
 #include <threading.h>
 #include <message_queue.h>
@@ -2168,6 +2167,7 @@ int main(void) {
     cwk_path_join(program_dir, "resources/icon.png", font_path, sizeof(font_path));
     Image icon = LoadImage(font_path);
     SetWindowIcon(icon);
+    SetWindowMinSize(512, 288);
     
     while (!WindowShouldClose()) {
         Clay_SetLayoutDimensions((Clay_Dimensions) {
