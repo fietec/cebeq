@@ -46,6 +46,19 @@ void print_usage(const char *program_name)
     printf("  -h, --help Show this help message\n\n");
 }
 
+bool create_dirs()
+{
+    if (!nob_mkdir_if_not_exists("build")){
+        nob_log(NOB_ERROR, "Could not create build directory!");
+        return false;
+    }
+    if (!nob_mkdir_if_not_exists("bin")){
+        nob_log(NOB_ERROR, "Could not create bin directory!");
+        return false;
+    }
+    return true;
+}
+
 void append_head(Nob_Cmd *cmd)
 {
     nob_cmd_append(cmd, "gcc", "-std=gnu2x");
@@ -183,14 +196,7 @@ int main(int argc, char **argv)
         print_usage(program_name);
         return 1;
     }
-    if (!nob_mkdir_if_not_exists("build")){
-        nob_log(NOB_ERROR, "Could not create build directory!");
-        return 1;
-    }
-    if (!nob_mkdir_if_not_exists("bin")){
-        nob_log(NOB_ERROR, "Could not create bin directory!");
-        return 1;
-    }
+
     bool compile_static = false;
     while (argc > 0){
         const char *target = nob_shift_args(&argc, &argv);
@@ -198,13 +204,13 @@ int main(int argc, char **argv)
             if (!build_cli(&cmd, compile_static)) return 1;
         }
         else if (strcmp(target, "gui") == 0) {
-            if (!build_gui(&cmd, compile_static)) return 1;
+            if (!create_dirs() || !build_gui(&cmd, compile_static)) return 1;
         }
         else if (strcmp(target, "lib") == 0) {
-            if (!build_lib(&cmd, compile_static)) return 1;
+            if (!create_dirs() || !build_lib(&cmd, compile_static)) return 1;
         }
         else if (strcmp(target, "all") == 0) {
-            if (!build_all(&cmd, compile_static)) return 1;
+            if (!create_dirs() || !build_all(&cmd, compile_static)) return 1;
         }
         else if (strcmp(target, "clean") == 0){
             cleanup();

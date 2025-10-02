@@ -29,4 +29,4 @@ See `./nob --help` for more information.
 This project uses [raylib](https://github.com/raysan5/raylib) as a graphical backend. See their wiki for build instructions. 
 
 Make sure to either place the compiled `.a` file into the `lib` directory or have it in your path.  
-Alternatively, you can download a pre-built binaries from the [`release`](https://github.com/fietec/cebeq/releases) tab which also ship raylib.
+Alternatively, you can download pre-built binaries from the [`release`](https://github.com/fietec/cebeq/releases) tab which also ship raylib.
