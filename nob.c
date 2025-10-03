@@ -191,7 +191,7 @@ int main(int argc, char **argv)
     NOB_GO_REBUILD_URSELF(argc, argv);
     Nob_Cmd cmd = {0};
     const char *program_name = nob_shift_args(&argc, &argv);
-    if (argc == 0){
+    if (argc <= 0){
         fprintf(stderr, "[ERROR] No target provided!\n");
         print_usage(program_name);
         return 1;
@@ -201,7 +201,7 @@ int main(int argc, char **argv)
     while (argc > 0){
         const char *target = nob_shift_args(&argc, &argv);
         if (strcmp(target, "cli") ==  0) {
-            if (!build_cli(&cmd, compile_static)) return 1;
+            if (!create_dirs() || !build_cli(&cmd, compile_static)) return 1;
         }
         else if (strcmp(target, "gui") == 0) {
             if (!create_dirs() || !build_gui(&cmd, compile_static)) return 1;
